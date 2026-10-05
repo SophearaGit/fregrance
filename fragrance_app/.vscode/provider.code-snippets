@@ -1,0 +1,27 @@
+{
+  "Zone App Provider": {
+    "prefix": "approv",
+    "body": [
+      "final class ${1}Provider extends AppProvider {",
+      "  final ${2}Repository _${3:repository};",
+      "",
+      "  // --------- [Constructor] ---------",
+      "  ${1}Provider(this._${3:repository});",
+      "  // ---------------------------------",
+      "",
+      "  // =========== [State] =============",
+      "  $0",
+      "  // =================================",
+      "",
+      "  // =========== [Getter] ============",
+      "  ",
+      "  // =================================",
+      "",
+      "  // ----------- [Functions] ---------",
+      "  ",
+      "  // ---------------------------------",
+      "}"
+    ],
+    "description": "Clean AppProvider skeleton with section zones"
+  }
+}

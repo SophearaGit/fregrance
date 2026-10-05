@@ -1,0 +1,6 @@
+# This folder sits inside Laragon's web root, so Apache would otherwise serve the
+# source code next to the backend. Only fragrance_backend is meant to be opened in a browser.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^fragrance_app(/|$) - [F,L]
+</IfModule>

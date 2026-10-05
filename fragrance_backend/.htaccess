@@ -1,0 +1,5 @@
+Options -Indexes
+# Keep the settings file (database password, token secret) private.
+<Files "config.php">
+    Require all denied
+</Files>

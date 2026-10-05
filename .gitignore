@@ -1,0 +1,6 @@
+# Per-computer settings written by install.php (database login and token secret)
+fragrance_backend/config.php
+
+# Editor and OS clutter
+.DS_Store
+Thumbs.db

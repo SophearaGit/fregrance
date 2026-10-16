@@ -103,17 +103,36 @@ if not defined AVD goto noavd
 echo Starting the phone emulator "%AVD%"...
 start "Android emulator" /min emulator -avd "%AVD%"
 
-echo Waiting for the phone to finish starting. This can take a minute or two.
-adb wait-for-device
+echo Waiting for the phone to finish starting. The first start of a new phone
+echo can take 3 to 5 minutes; after that it is much faster.
 set /a TRIES=0
 
 :waitboot
 adb shell getprop sys.boot_completed 2>nul | findstr /b "1" >nul
 if not errorlevel 1 goto phonerun
 set /a TRIES+=1
-if %TRIES% geq 100 goto boottimeout
+rem After 15 seconds, check that the emulator is still open (it closes itself on an error).
+if %TRIES% geq 5 call :emulatoralive || goto emulatorclosed
+set /a SHOW=TRIES %% 10
+if %SHOW%==0 echo   ...still starting
+rem Give up after about 6 minutes instead of waiting forever.
+if %TRIES% geq 120 goto boottimeout
 ping -n 4 127.0.0.1 >nul
 goto waitboot
+
+:emulatoralive
+tasklist 2>nul | findstr /i "qemu-system emulator.exe" >nul
+exit /b %errorlevel%
+
+:emulatorclosed
+echo.
+echo The phone emulator closed by itself, so it hit an error while starting.
+echo Open Android Studio, go to Device Manager and press the play button next to
+echo "%AVD%" to see the reason (often: low disk space or memory, or the phone
+echo image did not finish downloading). When the phone shows its home screen,
+echo run this file again.
+set "RUNFAILED=1"
+goto cleanup
 
 :phonerun
 echo.
@@ -137,7 +156,10 @@ set "RUNFAILED=1"
 goto cleanup
 
 :boottimeout
-echo The phone did not finish starting in time. Run this file again.
+echo The phone did not finish starting in about 6 minutes.
+echo Open the minimized "Android emulator" window to see what it is doing, or start
+echo "%AVD%" from Android Studio (Device Manager). When the phone shows its home
+echo screen, run this file again: it will use the phone that is already running.
 set "RUNFAILED=1"
 goto cleanup
 

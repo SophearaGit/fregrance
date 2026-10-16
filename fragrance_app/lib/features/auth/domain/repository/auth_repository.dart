@@ -5,4 +5,15 @@ abstract interface class AuthRepository {
     required String email,
     required String password,
   });
+
+  Future<AuthResponseModel> register({
+    required String fullname,
+    required String username,
+    required String email,
+    required String password,
+  });
+
+  Future<String> getGoogleClientId();
+
+  Future<AuthResponseModel> loginWithGoogle(String idToken);
 }

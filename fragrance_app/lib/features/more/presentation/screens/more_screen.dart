@@ -119,7 +119,7 @@ class MoreScreen extends StatelessWidget {
                   _ActionItem(
                     icon: Iconsax.clock,
                     label: 'History',
-                    onTap: () {},
+                    onTap: () => context.push(Routes.orders),
                   ),
                   _ActionItem(
                     icon: Iconsax.heart,
@@ -131,7 +131,7 @@ class MoreScreen extends StatelessWidget {
                   _ActionItem(
                     icon: Iconsax.bag_2,
                     label: 'Orders',
-                    onTap: () {},
+                    onTap: () => context.push(Routes.orders),
                   ),
                   _ActionItem(
                     icon: Iconsax.location,
@@ -151,9 +151,16 @@ class MoreScreen extends StatelessWidget {
             padding: const EdgeInsets.all(AppConst.spaceMD),
             children: [
               _WalletTile(
-                balance: 128.50,
+                balance: context.watch<ProfileProvider>().walletBalance,
                 onTopUp: () {
-                  // navigate to top up
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Top-ups are added by the shop for now. '
+                        'You can also pay with ABA PayWay at checkout.',
+                      ),
+                    ),
+                  );
                 },
               ),
             ],
@@ -199,6 +206,39 @@ class MoreScreen extends StatelessWidget {
 // ===========================================================
 // Profile Card
 // ===========================================================
+/// Round profile photo, or the first letter of the name when there is none.
+class _MiniAvatar extends StatelessWidget {
+  const _MiniAvatar({required this.imageUrl, required this.name});
+
+  final String? imageUrl;
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final initial = Text(
+      name.isNotEmpty ? name[0].toUpperCase() : '?',
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+        color: colorScheme.primary,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    return CircleAvatar(
+      radius: 28,
+      backgroundColor: colorScheme.primary.withValues(alpha: 0.12),
+      child: imageUrl == null || imageUrl!.isEmpty
+          ? initial
+          : AppImage(
+              image: imageUrl,
+              variant: ImageVariant.avatar,
+              width: 56,
+              height: 56,
+              errorBuilder: (_, _, _) => Center(child: initial),
+            ),
+    );
+  }
+}
+
 class _ProfileCard extends StatelessWidget {
   const _ProfileCard();
 
@@ -221,10 +261,9 @@ class _ProfileCard extends StatelessWidget {
           padding: const EdgeInsets.all(AppConst.spaceMD),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: colorScheme.primary.withValues(alpha: 0.12),
-                child: AppImage(image: profile?.profile ?? ''),
+              _MiniAvatar(
+                imageUrl: profile?.profile,
+                name: profile?.fullname ?? '',
               ),
               const SizedBox(width: AppConst.spaceMD),
               Expanded(
@@ -232,13 +271,20 @@ class _ProfileCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      profile?.fullname ?? 'Unknown',
+                      profile?.fullname ??
+                          (profileProvider.isLoading
+                              ? 'Loading…'
+                              : 'Tap to load your profile'),
                       style: textTheme.titleMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      profile?.email ?? 'unknown@example.com',
+                      profile == null ? '' : '@${profile.username} · ${profile.email}',
                       style: textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -345,7 +391,8 @@ class _ActionTile extends StatelessWidget {
 class _WalletTile extends StatelessWidget {
   const _WalletTile({required this.balance, required this.onTopUp});
 
-  final double balance;
+  /// Null when signed out or not loaded yet.
+  final double? balance;
   final VoidCallback onTopUp;
 
   @override
@@ -373,7 +420,9 @@ class _WalletTile extends StatelessWidget {
               Text('Available Balance', style: textTheme.bodySmall),
               const SizedBox(height: 2),
               Text(
-                '\$${balance.toStringAsFixed(2)}',
+                balance == null
+                    ? (AuthPreferences.isAuthenticated ? '…' : 'Sign in to see')
+                    : '\$${balance!.toStringAsFixed(2)}',
                 style: textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),

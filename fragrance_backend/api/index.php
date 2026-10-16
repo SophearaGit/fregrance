@@ -15,6 +15,7 @@ require APP_ROOT . '/app/api/auth.php';
 require APP_ROOT . '/app/api/product.php';
 require APP_ROOT . '/app/api/order.php';
 require APP_ROOT . '/app/api/account.php';
+require APP_ROOT . '/app/api/payway.php';
 
 send_cors_headers();
 
@@ -58,11 +59,17 @@ function request_path(): string
 $routes = [
     ['GET',  '#^/(?:health)?$#',                      'api_health'],
     ['GET',  '#^/uploads/([A-Za-z0-9._-]+)$#',        'api_upload_file'],
+    ['GET',  '#^/changes$#',                          'api_changes'],
 
     ['POST', '#^/auth/register$#',                    'api_auth_register'],
     ['POST', '#^/auth/login$#',                       'api_auth_login'],
+    ['GET',  '#^/auth/google/config$#',               'api_auth_google_config'],
+    ['POST', '#^/auth/google$#',                      'api_auth_google'],
 
     ['GET',  '#^/user$#',                             'api_user_me'],
+    ['POST', '#^/user$#',                             'api_user_update'],
+    ['POST', '#^/user/avatar$#',                      'api_user_avatar'],
+    ['POST', '#^/user/password$#',                    'api_user_password'],
     ['GET',  '#^/wallet$#',                           'api_wallet'],
     ['GET',  '#^/address$#',                          'api_address_list'],
     ['POST', '#^/address/add$#',                      'api_address_create'],
@@ -82,7 +89,13 @@ $routes = [
     ['GET',  '#^/product/?detail/:?([^/]+)$#',        'api_product_detail'],
     ['GET',  '#^/product/:?([0-9]+)$#',               'api_product_detail'],
 
+    ['GET',  '#^/order$#',                            'api_order_list'],
     ['POST', '#^/order$#',                            'api_order_create'],
+    ['POST', '#^/order/payway$#',                     'api_order_payway_create'],
+    ['POST', '#^/order/payway/check$#',               'api_order_payway_check'],
+    ['GET',  '#^/payway/checkout/([A-Za-z0-9]{1,20})$#', 'api_payway_checkout_page'],
+    ['GET',  '#^/payway/return$#',                    'api_payway_return'],
+    ['POST', '#^/payway/callback$#',                  'api_payway_callback'],
     ['GET',  '#^/order/processing$#',                 'api_order_processing'],
     ['GET',  '#^/order/history$#',                    'api_order_history'],
     ['POST', '#^/order/([^/]+)/received$#',           'api_order_received'],

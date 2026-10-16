@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
@@ -41,6 +42,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
       context.go(Routes.main);
     }
+  }
+
+  Future<void> _handleGoogleLogin(BuildContext context) async {
+    final authProvider = context.read<AuthProvider>();
+
+    await authProvider.loginWithGoogle();
+
+    if (!context.mounted || !authProvider.isAuthenticated) return;
+
+    await context.read<ProfileProvider>().getProfile();
+
+    if (!context.mounted) return;
+
+    context.go(Routes.main);
   }
 
   @override
@@ -158,8 +173,38 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: CircularProgressIndicator(),
                         ),
                       )
-                    else
+                    else ...[
                       AppButton('Login', onTap: () => _handleLogin(context)),
+
+                      // Google sign-in works in the phone app (not in Chrome).
+                      if (!kIsWeb) ...[
+                        const SizedBox(height: AppConst.spaceMD),
+                        Row(
+                          children: [
+                            const Expanded(child: Divider()),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppConst.spaceSM,
+                              ),
+                              child: Text(
+                                'or',
+                                style: textTheme.labelMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                            const Expanded(child: Divider()),
+                          ],
+                        ),
+                        const SizedBox(height: AppConst.spaceMD),
+                        AppButton(
+                          'Continue with Google',
+                          icon: Icons.g_mobiledata_rounded,
+                          variant: ButtonVariant.outline,
+                          onTap: () => _handleGoogleLogin(context),
+                        ),
+                      ],
+                    ],
 
                     const SizedBox(height: AppConst.spaceSM),
 
@@ -184,8 +229,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: textTheme.labelMedium,
                         ),
                         TextButton(
-                          onPressed: () async =>
-                              await context.push(Routes.register),
+                          onPressed: () async {
+                            context.read<AuthProvider>().resetError();
+                            await context.push(Routes.register);
+                            if (context.mounted) {
+                              context.read<AuthProvider>().resetError();
+                            }
+                          },
                           child: const Text('Register'),
                         ),
                       ],

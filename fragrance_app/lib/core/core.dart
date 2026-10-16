@@ -25,5 +25,8 @@ export './storage/app_storage.dart';
 // Providers
 export './providers/app_provider.dart';
 
+// Live updates from the admin site
+export './live/live_updates.dart';
+
 // Extensions
 export './extensions/display_image.dart';

@@ -12,8 +12,13 @@ final class ProductRepositoryImpl implements ProductRepository {
   Future<ApiPaginationResponse<List<ProductModel>>> getProducts({
     int page = 1,
     int limit = 10,
+    String? search,
   }) async {
-    return _remoteDatasource.getProducts(page: page, limit: limit);
+    return _remoteDatasource.getProducts(
+      page: page,
+      limit: limit,
+      search: search,
+    );
   }
 
   @override

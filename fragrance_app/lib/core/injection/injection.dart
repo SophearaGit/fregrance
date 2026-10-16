@@ -12,6 +12,7 @@ import '../../features/profile/presentation/provider/profile_provider.dart';
 import '../../features/product/data/datasources/product_remote_datasource.dart';
 import '../../features/product/data/repository/product_repository_impl.dart';
 import '../../features/product/presentation/provider/product_provider.dart';
+import '../../features/product/presentation/provider/search_provider.dart';
 
 import '../../features/cart/data/datasources/cart_remote_datasource.dart';
 import '../../features/cart/data/repository/cart_repository_impl.dart';
@@ -28,13 +29,20 @@ import '../../features/brand/presentation/provider/brand_provider.dart';
 import '../../features/discovery/data/datasources/discovery_remote_datasource.dart';
 import '../../features/discovery/data/repository/discovery_repository_impl.dart';
 import '../../features/discovery/presentation/provider/discovery_provider.dart';
+
+import '../../features/order/data/datasources/order_remote_datasource.dart';
+import '../../features/order/presentation/provider/order_provider.dart';
 // ---------------------------------------------------
 
 // dart format off
 // ~~~~~~~~~~~~~~~~~~ [Injections] ~~~~~~~~~~~~~~~~~~~
 import '../network/api_client.dart';
+import '../live/live_updates.dart';
 
 final apiClient = ApiClient();
+
+// Watches the backend and refreshes the screens when the admin changes data.
+final liveUpdates = LiveUpdates(apiClient);
 
 
 // ======================[Theme]=====================
@@ -57,6 +65,7 @@ final profileProvider   = ProfileProvider(profileRepository);
 final productDatasource = ProductRemoteDatasourceImpl(apiClient);
 final productRepository = ProductRepositoryImpl(productDatasource);
 final productProvider   = ProductProvider(productRepository);
+final searchProvider    = SearchProvider(productRepository);
 // ==================================================
 
 // ====================[Cart]========================
@@ -81,4 +90,9 @@ final brandProvider   = BrandProvider(brandRepository);
 final discoveryDatasource = DiscoveryRemoteDatasourceImpl(apiClient);
 final discoveryRepository = DiscoveryRepositoryImpl(discoveryDatasource);
 final discoveryProvider   = DiscoveryProvider(discoveryRepository);
+// ==================================================
+
+// ====================[Orders]======================
+final orderDatasource = OrderRemoteDatasourceImpl(apiClient);
+final orderProvider   = OrderProvider(orderDatasource);
 // ==================================================

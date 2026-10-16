@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../../app/router/routes.dart';
 import '../../../../core/core.dart';
 import '../../../../shared/shared.dart';
+import '../../../profile/presentation/provider/profile_provider.dart';
 import '../provider/home_provider.dart';
 import '../widgets/home_bento_layout.dart';
 import '../widgets/home_feed_product_list.dart';
@@ -47,18 +48,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Welcome back',
-              style: textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            Text('Scent Seeker', style: textTheme.titleLarge),
-          ],
-        ),
+        titleSpacing: AppConst.spaceMD,
+        title: const _Greeting(),
         actions: const [AppCartCounter(), SizedBox(width: 4)],
       ),
       body: RefreshIndicator(
@@ -76,9 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // ─────────────────────────────────────────
             _SearchBar(
               controller: _searchController,
-              onChanged: (value) {
-                // TODO: filter products
-              },
+              onTap: () async => await context.push(Routes.search),
               onFilterTap: () {
                 // TODO: open filter bottom sheet
               },
@@ -131,12 +120,12 @@ class _HomeScreenState extends State<HomeScreen> {
 class _SearchBar extends StatelessWidget {
   const _SearchBar({
     required this.controller,
-    required this.onChanged,
+    required this.onTap,
     required this.onFilterTap,
   });
 
   final TextEditingController controller;
-  final ValueChanged<String> onChanged;
+  final VoidCallback onTap; // opens the search screen
   final VoidCallback onFilterTap;
 
   @override
@@ -149,7 +138,8 @@ class _SearchBar extends StatelessWidget {
         Expanded(
           child: TextField(
             controller: controller,
-            onChanged: onChanged,
+            readOnly: true,
+            onTap: onTap,
             style: textTheme.bodyMedium,
             decoration: InputDecoration(
               hintText: 'Search products...',
@@ -201,6 +191,81 @@ class _SearchBar extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// "Welcome back, Niza" with the user's photo; a friendly hello for guests.
+/// Tapping it opens the profile (or the sign-in screen for guests).
+class _Greeting extends StatelessWidget {
+  const _Greeting();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
+    final profile = context.watch<ProfileProvider>().profile;
+    final user = AuthPreferences.isAuthenticated ? profile : null;
+    final signedIn = user != null;
+    final firstName = user == null ? '' : user.fullname.trim().split(' ').first;
+    final initial = firstName.isNotEmpty ? firstName[0].toUpperCase() : '';
+    final photo = user?.profile;
+
+    final avatar = CircleAvatar(
+      radius: 21,
+      backgroundColor: colorScheme.primary.withValues(alpha: 0.12),
+      child: photo != null && photo.isNotEmpty
+          ? AppImage(
+              key: ValueKey(photo),
+              image: photo,
+              variant: ImageVariant.avatar,
+              width: 42,
+              height: 42,
+              errorBuilder: (_, _, _) => Center(child: Text(initial)),
+            )
+          : initial.isNotEmpty
+          ? Text(
+              initial,
+              style: textTheme.titleMedium?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            )
+          : Icon(Iconsax.user, size: 20, color: colorScheme.primary),
+    );
+
+    return InkWell(
+      borderRadius: AppConst.borderRadiusFull,
+      onTap: () => context.push(signedIn ? Routes.profile : Routes.login),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          avatar,
+          const SizedBox(width: AppConst.spaceSM + 4),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  signedIn ? 'Welcome back,' : 'Hello there,',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  signedIn ? firstName : 'Scent Seeker',
+                  style: textTheme.titleLarge,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -5,6 +5,7 @@ abstract interface class ProductRepository {
   Future<ApiPaginationResponse<List<ProductModel>>> getProducts({
     int page = 1,
     int limit = 10,
+    String? search,
   });
 
   Future<ProductModel> getOneProductById(String id);

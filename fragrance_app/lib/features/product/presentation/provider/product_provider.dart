@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import '../../../../core/live/live_updates.dart';
 import '../../../../core/providers/app_provider.dart';
 import '../../data/model/product_model.dart';
 import '../../domain/repository/product_repository.dart';
@@ -56,5 +57,23 @@ final class ProductProvider extends AppProvider {
     onError: (error) => log('Error getTopRateProducts: $error'),
     onFinally: () => log('Finish getTopRateProducts()'),
   );
+
+  /// Reload the loaded products quietly (no spinner). Called by LiveUpdates.
+  Future<void> refresh() async {
+    if (isLoading || _products.isEmpty) return;
+    final result = await reloadPages(
+      loadedCount: _products.length,
+      limit: _limit,
+      fetch: (page) =>
+          _productRepository.getProducts(page: page, limit: _limit),
+    );
+    if (isLoading) return;
+    _products
+      ..clear()
+      ..addAll(result.items);
+    _hasMore = result.hasNext;
+    _page = result.hasNext ? result.pages + 1 : result.pages;
+    notifyListeners();
+  }
   // ------------------------------------
 }

@@ -220,3 +220,11 @@ function api_order_received(string $orderId): void
 
     json_response(200, ['message' => 'Order received successfully.', 'data' => orders_json($updated)[0]]);
 }
+
+/** GET /order : all of the customer's orders, newest first (for "My orders"). */
+function api_order_list(): void
+{
+    $userId = order_user_id();
+    $orders = q('SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 100', [$userId])->fetchAll();
+    json_response(200, ['message' => 'Orders retrieved.', 'data' => orders_json($orders)]);
+}

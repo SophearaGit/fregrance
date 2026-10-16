@@ -13,19 +13,109 @@ function api_user_me(): void
         json_response(404, ['message' => 'User not found.', 'data' => null]);
     }
 
-    json_response(200, [
-        'message' => 'User found.',
-        'data'    => [
-            'id'        => (string) $user['id'],
-            'fullname'  => $user['fullname'],
-            'username'  => $user['username'],
-            'email'     => $user['email'],
-            'role'      => $user['role'],
-            'profile'   => public_image_url($user['profile']),
-            'createdAt' => iso_date($user['created_at']),
-            'updatedAt' => iso_date($user['updated_at']),
-        ],
-    ]);
+    json_response(200, ['message' => 'User found.', 'data' => user_json($user)]);
+}
+
+/** A user row in the shape the app reads. */
+function user_json(array $user): array
+{
+    return [
+        'id'        => (string) $user['id'],
+        'fullname'  => $user['fullname'],
+        'username'  => $user['username'],
+        'email'     => $user['email'],
+        'role'      => $user['role'],
+        'profile'   => public_image_url($user['profile']),
+        'createdAt' => iso_date($user['created_at']),
+        'updatedAt' => iso_date($user['updated_at']),
+    ];
+}
+
+/** The signed-in user's row, or a 404 reply. */
+function current_user_row(): array
+{
+    $auth = require_auth();
+    $user = q('SELECT * FROM users WHERE id = ?', [(int) $auth['id']])->fetch();
+    if (!$user) {
+        json_response(404, ['message' => 'User not found.', 'data' => null]);
+    }
+    return $user;
+}
+
+/** POST /user  { fullname, username, email }  Edit your own details. */
+function api_user_update(): void
+{
+    $user = current_user_row();
+    $body = json_body();
+    $fullname = mb_substr(body_string($body, 'fullname'), 0, 120);
+    $username = strtolower(body_string($body, 'username'));
+    $email = strtolower(body_string($body, 'email'));
+
+    if ($fullname === '' || $username === '' || $email === '') {
+        json_response(400, ['message' => 'Please fill in your name, username and email.']);
+    }
+    if (!preg_match('/^[a-z0-9_.]{3,30}$/', $username)) {
+        json_response(409, ['message' => 'Username must be 3 to 30 letters, numbers, dots or underscores.']);
+    }
+    if (!is_valid_email($email)) {
+        json_response(409, ['message' => 'That email address does not look right.']);
+    }
+    if (q('SELECT 1 FROM users WHERE username = ? AND id <> ?', [$username, $user['id']])->fetchColumn()) {
+        json_response(409, ['message' => 'That username is taken. Try another one.']);
+    }
+    if (q('SELECT 1 FROM users WHERE email = ? AND id <> ?', [$email, $user['id']])->fetchColumn()) {
+        json_response(409, ['message' => 'Another account already uses this email.']);
+    }
+
+    q('UPDATE users SET fullname = ?, username = ?, email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [$fullname, $username, $email, $user['id']]);
+    $fresh = q('SELECT * FROM users WHERE id = ?', [$user['id']])->fetch();
+    json_response(200, ['message' => 'Profile saved.', 'data' => user_json($fresh)]);
+}
+
+/** POST /user/avatar  multipart "avatar" file  Change your profile photo. */
+function api_user_avatar(): void
+{
+    $user = current_user_row();
+    if (!isset($_FILES['avatar'])) {
+        json_response(400, ['message' => 'Choose a photo to upload.']);
+    }
+    try {
+        $stored = store_uploaded_image($_FILES['avatar']);
+    } catch (RuntimeException $error) {
+        json_response(400, ['message' => $error->getMessage()]);
+    }
+
+    q('UPDATE users SET profile = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [$stored, $user['id']]);
+    // Remove the old photo file if it was uploaded here and nothing else uses it.
+    $old = (string) ($user['profile'] ?? '');
+    if (str_starts_with($old, 'uploads/')
+        && !q('SELECT 1 FROM users WHERE profile = ?', [$old])->fetchColumn()) {
+        delete_unused_uploads([$old]);
+    }
+
+    $fresh = q('SELECT * FROM users WHERE id = ?', [$user['id']])->fetch();
+    json_response(200, ['message' => 'Photo updated.', 'data' => user_json($fresh)]);
+}
+
+/** POST /user/password  { currentPassword, newPassword }  Change your password. */
+function api_user_password(): void
+{
+    $user = current_user_row();
+    $body = json_body();
+    $current = body_string($body, 'currentPassword', false);
+    $new = body_string($body, 'newPassword', false);
+
+    if (!password_verify($current, $user['password_hash'])) {
+        json_response(401, ['message' => 'Your current password is not right.']);
+    }
+    if (!is_valid_password($new)) {
+        json_response(409, ['message' => 'New password needs at least 8 characters, with a letter, a number and a symbol.']);
+    }
+
+    q('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [password_hash($new, PASSWORD_BCRYPT, ['cost' => 12]), $user['id']]);
+    json_response(200, ['message' => 'Password changed.']);
 }
 
 /** GET /wallet : the signed-in customer's wallet. */

@@ -268,3 +268,21 @@ function api_product_batch(): void
 
     json_response(200, ['message' => 'Products found sucessfully.', 'data' => hydrate_products($rows)]);
 }
+
+
+/**
+ * GET /changes
+ * A short fingerprint of the shop data. The app asks for it every few seconds and
+ * reloads its screens when it changes, so edits made in the admin site show up straight away.
+ * CHECKSUM TABLE notices every change (insert, update, delete), wherever it was made.
+ * Orders are included so a status change in the admin site shows in "My orders".
+ */
+function api_changes(): void
+{
+    $parts = [];
+    foreach (db()->query('CHECKSUM TABLE products, product_images, product_attributes, brands, orders') as $row) {
+        $parts[] = $row['Table'] . '=' . $row['Checksum'];
+    }
+    header('Cache-Control: no-store');
+    json_response(200, ['message' => 'Data fingerprint', 'data' => ['version' => md5(implode('|', $parts))]]);
+}

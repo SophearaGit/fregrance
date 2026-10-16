@@ -6,6 +6,7 @@ abstract interface class ProductRemoteDatasource {
   Future<ApiPaginationResponse<List<ProductModel>>> getProducts({
     int page = 1,
     int limit = 20,
+    String? search,
   });
 
   Future<ApiResponse<ProductModel>> getOneById(String id);
@@ -21,10 +22,16 @@ final class ProductRemoteDatasourceImpl implements ProductRemoteDatasource {
   Future<ApiPaginationResponse<List<ProductModel>>> getProducts({
     int page = 1,
     int limit = 10,
+    String? search,
   }) async {
+    final words = search?.trim() ?? '';
     final response = await _apiClient.get(
       path: ProductEndpoint.products,
-      queryParamters: {'page': page, 'limit': limit},
+      queryParamters: {
+        'page': page,
+        'limit': limit,
+        if (words.isNotEmpty) 'search': words,
+      },
     );
 
     // log(response.data.toString());

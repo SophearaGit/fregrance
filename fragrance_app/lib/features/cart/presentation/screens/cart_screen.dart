@@ -1,11 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../app/router/routes.dart';
 import '../../../../core/core.dart';
+import '../../../order/presentation/provider/order_provider.dart';
+import '../../../order/presentation/screens/order_success_screen.dart';
+import '../../../profile/presentation/provider/profile_provider.dart';
 import '../provider/cart_provider.dart';
 import '../widgets/cart_empty.dart';
 import '../widgets/cart_item_card.dart';
 import '../widgets/cart_summary.dart';
+import 'payway_checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -19,9 +27,186 @@ class _CartScreenState extends State<CartScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final cartProvider = context.watch<CartProvider>();
-      await Future.wait([cartProvider.loadCart()]);
+      await context.read<CartProvider>().loadCart();
     });
+  }
+
+  Future<void> _checkout() async {
+    final cart = context.read<CartProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (!AuthPreferences.isAuthenticated) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Please sign in to check out.')),
+      );
+      await context.push(Routes.login);
+      return;
+    }
+
+    final total = cart.subtotal.toStringAsFixed(2);
+    final method = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Text(
+                'Pay \$$total with',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance_rounded),
+              title: const Text('ABA PayWay'),
+              subtitle: const Text('Card, ABA Pay or KHQR'),
+              onTap: () => Navigator.of(context).pop('payway'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet_rounded),
+              title: const Text('Wallet'),
+              subtitle: const Text('Pay from your shop balance'),
+              onTap: () => Navigator.of(context).pop('wallet'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || method == null) return;
+
+    if (method == 'payway') {
+      await _payWithPayway();
+    } else {
+      await _payWithWallet(total);
+    }
+  }
+
+  Future<void> _payWithWallet(String total) async {
+    final cart = context.read<CartProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Place order?'),
+        content: Text('\$$total will be paid from your wallet.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Pay now'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final result = await cart.checkout();
+    if (!mounted) return;
+
+    if (result.success) {
+      _goToSuccess(
+        orderId: result.orderId,
+        amount: double.tryParse(total) ?? 0,
+        paymentLabel: 'Wallet',
+      );
+      return;
+    }
+
+    messenger.showSnackBar(SnackBar(content: Text(result.message)));
+    if (result.needsSignIn) await context.push(Routes.login);
+  }
+
+  Future<void> _payWithPayway() async {
+    final cart = context.read<CartProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    final start = await cart.startPayway();
+    if (!mounted) return;
+    final checkout = start.checkout;
+    if (checkout == null) {
+      messenger.showSnackBar(SnackBar(content: Text(start.message)));
+      if (start.needsSignIn) await context.push(Routes.login);
+      return;
+    }
+
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => PaywayCheckoutScreen(
+          checkout: checkout,
+          isPaid: () => cart.isPaywayPaid(checkout.tranId),
+        ),
+      ),
+    );
+    if (!mounted) return;
+
+    // Ask the backend (which asks PayWay) whether the money arrived.
+    while (mounted) {
+      final result = await cart.confirmPayway(checkout.tranId);
+      if (!mounted) return;
+
+      if (result.status == 'paid') {
+        _goToSuccess(
+          orderId: checkout.orderId,
+          amount: checkout.amount,
+          paymentLabel: 'ABA PayWay',
+        );
+        return;
+      }
+      if (result.status == 'cancelled') {
+        messenger.showSnackBar(SnackBar(content: Text(result.message)));
+        return;
+      }
+
+      // Pending or could not check: let the customer try again.
+      final again = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Payment not confirmed yet'),
+          content: Text(
+            '${result.message}\n\nIf you finished paying, tap Check again. '
+            'Your cart is kept until the payment is confirmed.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Close'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Check again'),
+            ),
+          ],
+        ),
+      );
+      if (again != true) return;
+    }
+  }
+
+  /// Payment done: show the "Thank you" screen with what to do next.
+  void _goToSuccess({
+    required String? orderId,
+    required double amount,
+    required String paymentLabel,
+  }) {
+    // The wallet balance and the orders list have changed.
+    unawaited(context.read<ProfileProvider>().refreshWallet());
+    unawaited(context.read<OrderProvider>().loadOrders());
+    context.pushReplacement(
+      Routes.orderSuccess,
+      extra: OrderSuccessArgs(
+        orderId: orderId,
+        amount: amount,
+        paymentLabel: paymentLabel,
+      ),
+    );
   }
 
   @override
@@ -30,13 +215,10 @@ class _CartScreenState extends State<CartScreen> {
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
 
-    final cartItems = context.watch<CartProvider>().cartItems;
-
+    final cart = context.watch<CartProvider>();
+    final cartItems = cart.cartItems;
     final hasItems = cartItems.isNotEmpty;
-    final subtotal = cartItems.fold<double>(
-      0,
-      (sum, item) => sum + (item.price * item.quantity),
-    );
+    final isFirstLoad = cart.isLoading && !hasItems && cart.itemCount > 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -44,7 +226,9 @@ class _CartScreenState extends State<CartScreen> {
         actions: [
           if (hasItems)
             TextButton(
-              onPressed: () async => context.read<CartProvider>().clearCart(),
+              onPressed: cart.isCheckingOut
+                  ? null
+                  : () async => context.read<CartProvider>().clearCart(),
               child: Text(
                 'Clear',
                 style: textTheme.labelLarge?.copyWith(color: colorScheme.error),
@@ -52,45 +236,51 @@ class _CartScreenState extends State<CartScreen> {
             ),
         ],
       ),
-      body: hasItems
+      body: isFirstLoad
+          ? const Center(child: CircularProgressIndicator())
+          : hasItems
           ? Column(
               children: [
                 // ── Items ──
                 Expanded(
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppConst.spaceMD,
-                      AppConst.spaceMD,
-                      AppConst.spaceMD,
-                      AppConst.spaceXL,
+                  child: RefreshIndicator(
+                    onRefresh: cart.loadCart,
+                    child: ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppConst.spaceMD,
+                        AppConst.spaceMD,
+                        AppConst.spaceMD,
+                        AppConst.spaceXL,
+                      ),
+                      itemCount: cartItems.length,
+                      separatorBuilder: (_, _) =>
+                          const SizedBox(height: AppConst.spaceMD),
+                      itemBuilder: (context, index) {
+                        final item = cartItems[index];
+                        return CartItemCard(
+                          key: ValueKey(item.productId),
+                          item: item,
+                          onIncrease: () async =>
+                              cart.increase(item.productId),
+                          onDecrease: () async =>
+                              cart.decrease(item.productId),
+                          onRemove: () async => cart.removeId(item.productId),
+                        );
+                      },
                     ),
-                    itemCount: cartItems.length,
-                    separatorBuilder: (_, _) =>
-                        const SizedBox(height: AppConst.spaceMD),
-                    itemBuilder: (context, index) {
-                      final item = cartItems[index];
-                      return CartItemCard(
-                        item: item,
-                        onIncrease: () {
-                          // TODO
-                        },
-                        onDecrease: () {
-                          // TODO
-                        },
-                        onRemove: () {
-                          // TODO
-                        },
-                      );
-                    },
                   ),
                 ),
 
                 // ── Bottom Summary ──
                 CartSummary(
-                  subtotal: subtotal,
-                  onCheckout: () {
-                    // TODO: checkout
-                  },
+                  subtotal: cart.subtotal,
+                  itemCount: cart.itemCount,
+                  isLoading: cart.isCheckingOut,
+                  note: cart.hasProblems
+                      ? 'Fix the items marked in red to check out.'
+                      : null,
+                  onCheckout: cart.hasProblems ? null : _checkout,
                 ),
               ],
             )

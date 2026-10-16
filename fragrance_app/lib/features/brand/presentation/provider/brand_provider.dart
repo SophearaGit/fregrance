@@ -86,5 +86,36 @@ final class BrandProvider extends AppProvider {
     );
   }
 
+  /// Reload brands and the open brand's products quietly. Called by LiveUpdates.
+  Future<void> refresh() async {
+    if (isLoading) return;
+
+    if (_brands.isNotEmpty) {
+      final response = await _repository.getBrands();
+      _brands = response.data;
+    }
+
+    final name = _currentBrandName;
+    if (name != null) {
+      final result = await reloadPages(
+        loadedCount: _brandProducts.length,
+        limit: _limit,
+        fetch: (page) => _repository.getBrandProducts(
+          name: name,
+          page: page,
+          limit: _limit,
+        ),
+      );
+      if (name == _currentBrandName && !isLoading) {
+        _brandProducts
+          ..clear()
+          ..addAll(result.items);
+        _hasMore = result.hasNext;
+        _page = result.hasNext ? result.pages + 1 : result.pages;
+      }
+    }
+    notifyListeners();
+  }
+
   // -----------------------------------
 }

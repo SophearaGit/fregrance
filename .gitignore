@@ -4,3 +4,15 @@ fragrance_backend/config.php
 # Editor and OS clutter
 .DS_Store
 Thumbs.db
+
+# Personal setup guide (kept on this computer only)
+SETUP-GUIDE.md
+
+# ABA PayWay keys (copy payway-config.example.php to create it)
+fragrance_backend/payway-config.php
+
+# Troubleshooting logs written by the backend
+fragrance_backend/logs/
+
+# Team accounts with their passwords (kept on this computer only)
+fragrance_backend/database/add-team-users.sql

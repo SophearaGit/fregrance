@@ -64,9 +64,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           // Search
           _DiscoverySearchBar(
             controller: _searchController,
-            onChanged: (value) {
-              // TODO: implement search (debounce + call repository)
-            },
+            onTap: () async => await context.push(Routes.search),
           ),
 
           const SizedBox(height: AppConst.spaceXL),
@@ -202,11 +200,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 class _DiscoverySearchBar extends StatelessWidget {
   const _DiscoverySearchBar({
     required this.controller,
-    required this.onChanged,
+    required this.onTap,
   });
 
   final TextEditingController controller;
-  final ValueChanged<String> onChanged;
+  final VoidCallback onTap; // opens the search screen
 
   @override
   Widget build(BuildContext context) {
@@ -215,7 +213,8 @@ class _DiscoverySearchBar extends StatelessWidget {
 
     return TextField(
       controller: controller,
-      onChanged: onChanged,
+      readOnly: true,
+      onTap: onTap,
       style: textTheme.bodyMedium,
       decoration: InputDecoration(
         hintText: 'Search scents, notes, houses...',

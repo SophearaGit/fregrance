@@ -63,6 +63,25 @@ final class ApiClient {
     }
   }
 
+  /// Send files (multipart/form-data), e.g. a profile photo.
+  Future<Response<Map<String, dynamic>>> postForm({
+    required String path,
+    required FormData data,
+  }) async {
+    try {
+      return await _dio.post<Map<String, dynamic>>(
+        path,
+        data: data,
+        options: Options(
+          headers: _authHeaders,
+          contentType: 'multipart/form-data',
+        ),
+      );
+    } on DioException catch (error) {
+      throw _handleDioException(error);
+    }
+  }
+
   Map<String, String> get _authHeaders {
     final token = AuthPreferences.token;
 

@@ -10,11 +10,15 @@ class CartQuantityPill extends StatelessWidget {
     required this.quantity,
     required this.onIncrease,
     required this.onDecrease,
+    this.canIncrease = true,
   });
 
   final int quantity;
   final VoidCallback onIncrease;
   final VoidCallback onDecrease;
+
+  /// False when there is no more stock to add.
+  final bool canIncrease;
 
   @override
   Widget build(BuildContext context) {
@@ -49,8 +53,8 @@ class CartQuantityPill extends StatelessWidget {
           ),
           CartQuantityButton(
             icon: Iconsax.add,
-            onTap: onIncrease,
-            enabled: true,
+            onTap: canIncrease ? onIncrease : null,
+            enabled: canIncrease,
           ),
         ],
       ),

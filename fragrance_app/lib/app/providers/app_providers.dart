@@ -14,6 +14,7 @@ final List<SingleChildWidget> appProviders = [
 
   // ====================[ Product ]====================
   ChangeNotifierProvider.value(value: productProvider),
+  ChangeNotifierProvider.value(value: searchProvider),
 
   // =====================[ Cart ]======================
   ChangeNotifierProvider.value(value: cartProvider),
@@ -29,4 +30,7 @@ final List<SingleChildWidget> appProviders = [
 
   // ===================[ Discovery ]===================
   ChangeNotifierProvider.value(value: discoveryProvider),
+
+  // =====================[ Orders ]====================
+  ChangeNotifierProvider.value(value: orderProvider),
 ];

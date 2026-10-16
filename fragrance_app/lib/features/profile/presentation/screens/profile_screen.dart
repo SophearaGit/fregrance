@@ -22,7 +22,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future.wait([]);
+      final provider = context.read<ProfileProvider>();
+      if (provider.profile == null) await provider.getProfile();
     });
   }
 
@@ -37,9 +38,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Profile'),
         actions: [
           IconButton(
-            onPressed: () {
-              // TODO: navigate to edit profile
-            },
+            onPressed: () async => context.push(Routes.profileEdit),
             icon: Icon(Iconsax.edit_2, size: 22, color: colorScheme.onSurface),
           ),
         ],
@@ -59,10 +58,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           if (user == null) {
             return Center(
-              child: Text(
-                'Unable to load profile',
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+              child: Padding(
+                padding: AppConst.paddingScreen,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      provider.error ?? 'Unable to load profile',
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppConst.spaceMD),
+                    AppButton(
+                      'Try again',
+                      width: 160,
+                      onTap: provider.getProfile,
+                    ),
+                  ],
                 ),
               ),
             );
@@ -132,6 +146,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     label: 'Role',
                     value: user.role.toUpperCase(),
                   ),
+                  if (provider.walletBalance != null)
+                    _InfoTile(
+                      icon: Iconsax.wallet_3,
+                      label: 'Wallet balance',
+                      value:
+                          '\$${provider.walletBalance!.toStringAsFixed(2)}',
+                    ),
                 ],
               ),
 
@@ -142,9 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 'Edit Profile',
                 icon: Iconsax.edit_2,
                 variant: ButtonVariant.outline,
-                onTap: () {
-                  // TODO: navigate to edit
-                },
+                onTap: () async => context.push(Routes.profileEdit),
               ),
 
               const SizedBox(height: AppConst.spaceMD),

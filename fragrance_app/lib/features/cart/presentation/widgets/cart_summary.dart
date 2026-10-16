@@ -8,20 +8,29 @@ class CartSummary extends StatelessWidget {
   const CartSummary({
     super.key,
     required this.subtotal,
+    required this.itemCount,
     required this.onCheckout,
+    this.isLoading = false,
+    this.note,
   });
 
   final double subtotal;
-  final VoidCallback onCheckout;
+  final int itemCount;
+
+  /// Null disables the button.
+  final VoidCallback? onCheckout;
+  final bool isLoading;
+
+  /// Shown above the button, e.g. why checkout is disabled.
+  final String? note;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    // Mock shipping
-    const shipping = 12.0;
-    final total = subtotal + shipping;
+    // The backend charges the item total only, so shipping is free.
+    final total = subtotal;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(
@@ -41,9 +50,12 @@ class CartSummary extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _SummaryRow(label: 'Subtotal', value: subtotal),
+            _SummaryRow(
+              label: 'Subtotal ($itemCount ${itemCount == 1 ? 'item' : 'items'})',
+              value: '\$${subtotal.toStringAsFixed(2)}',
+            ),
             const SizedBox(height: 6),
-            _SummaryRow(label: 'Shipping', value: shipping),
+            const _SummaryRow(label: 'Shipping', value: 'Free'),
             const SizedBox(height: AppConst.spaceSM),
             Divider(color: colorScheme.outline.withValues(alpha: 0.2)),
             const SizedBox(height: AppConst.spaceSM),
@@ -64,8 +76,21 @@ class CartSummary extends StatelessWidget {
                 ),
               ],
             ),
+            if (note != null) ...[
+              const SizedBox(height: AppConst.spaceSM),
+              Text(
+                note!,
+                textAlign: TextAlign.center,
+                style: textTheme.bodySmall?.copyWith(color: colorScheme.error),
+              ),
+            ],
             const SizedBox(height: AppConst.spaceMD),
-            AppButton('Checkout', icon: Iconsax.card, onTap: onCheckout),
+            AppButton(
+              'Checkout',
+              icon: Iconsax.card,
+              isLoading: isLoading,
+              onTap: onCheckout,
+            ),
           ],
         ),
       ),
@@ -77,7 +102,7 @@ class _SummaryRow extends StatelessWidget {
   const _SummaryRow({required this.label, required this.value});
 
   final String label;
-  final double value;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +118,7 @@ class _SummaryRow extends StatelessWidget {
             color: colorScheme.onSurfaceVariant,
           ),
         ),
-        Text('\$${value.toStringAsFixed(2)}', style: textTheme.bodyMedium),
+        Text(value, style: textTheme.bodyMedium),
       ],
     );
   }

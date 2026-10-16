@@ -61,5 +61,28 @@ final class HomeProvider extends AppProvider {
     _featured = response.data;
     notifyListeners(); // Refresh UI
   });
+
+  /// Reload what is on screen quietly (no spinner). Called by LiveUpdates.
+  Future<void> refresh() async {
+    if (isLoading) return;
+    final tab = _currentTab;
+
+    final featured = await _repository.getFeatured();
+    _featured = featured.data;
+
+    final result = await reloadPages(
+      loadedCount: _feeds.length,
+      limit: _limit,
+      fetch: (page) => _repository.getFeed(tab: tab, page: page, limit: _limit),
+    );
+    if (tab == _currentTab && !isLoading) {
+      _feeds
+        ..clear()
+        ..addAll(result.items);
+      _hasMore = result.hasNext;
+      _page = result.hasNext ? result.pages + 1 : result.pages;
+    }
+    notifyListeners();
+  }
   // -------------------------------------
 }

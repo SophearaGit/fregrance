@@ -60,19 +60,47 @@ class AppImage extends StatelessWidget {
     }
   }
 
+  /// Shown when there is no photo or it fails to load: a soft perfume-bottle
+  /// picture, with "No image" underneath when there is room for it.
   Widget _buildFallbackError(BuildContext context) {
-    // Ensure dimensions are present AND finite to prevent Infinity font size crashes
-    final bool hasValidDimensions =
-        width != null && height != null && width!.isFinite && height!.isFinite;
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = colorScheme.primary.withValues(alpha: 0.45);
 
     return Container(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: Center(
-        child: Icon(
-          Icons.broken_image_outlined,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          size: hasValidDimensions ? (width! * 0.4) : 24.0,
-        ),
+      color: colorScheme.primary.withValues(alpha: 0.08),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final side = [
+            if (constraints.maxWidth.isFinite) constraints.maxWidth,
+            if (constraints.maxHeight.isFinite) constraints.maxHeight,
+            if (width != null && width!.isFinite) width!,
+            if (height != null && height!.isFinite) height!,
+          ].fold<double>(96, (a, b) => a < b ? a : b);
+          final showText = side >= 80;
+
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.water_drop_outlined,
+                  color: color,
+                  size: (side * 0.32).clamp(14, 48).toDouble(),
+                ),
+                if (showText) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'No image',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
       ),
     );
   }

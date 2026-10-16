@@ -15,6 +15,7 @@ abstract final class Routes {
   static const String register = '/register';
   static const String favorite = "/favorite";
   static const String profile = '/profile';
+  static const String profileEdit = '/profile/edit';
 
   // ==========================================
   // Bottom Navigation Level Routes
@@ -40,6 +41,10 @@ abstract final class Routes {
   static const String productDetail = "/product/detail";
 
   static const String cart = '/cart';
+  static const String orders = '/orders';
+  static const String orderSuccess = '/order/success';
 
   static const String discoveryProducts = '/discovery/products';
+
+  static const String search = '/search';
 }

@@ -31,22 +31,41 @@ if (is_post()) {
         try {
             q('UPDATE orders SET status = ? WHERE id = ?', [$new, $id]);
 
-            // Cancelling (or failing) an order gives the money and the stock back.
-            if (in_array($new, ['cancelled', 'failed'], true)) {
+            $closing = in_array($new, ['cancelled', 'failed'], true);
+            // A "pending" order (ABA PayWay, not paid yet) has not taken any stock.
+            $stockTaken = $order['status'] !== 'pending';
+            $items = q('SELECT product_id, quantity FROM order_items WHERE order_id = ? AND product_id IS NOT NULL', [$id])->fetchAll();
+            $message = 'Order marked as ' . $new . '.';
+
+            if ($closing) {
+                // Cancelling (or failing) an order gives the money and the stock back.
                 if ($order['payment_method'] === 'wallet') {
                     q('UPDATE wallets SET balance = balance + ? WHERE user_id = ?', [$order['total_amount'], $order['user_id']]);
+                    $message .= ' The wallet was refunded.';
+                } elseif ($order['payment_method'] === 'aba_payway' && $stockTaken) {
+                    $message .= ' Refund the customer in the ABA PayWay merchant portal.';
                 }
-                foreach (q('SELECT product_id, quantity FROM order_items WHERE order_id = ? AND product_id IS NOT NULL', [$id]) as $item) {
+                if ($stockTaken) {
+                    foreach ($items as $item) {
+                        q("UPDATE products
+                              SET stock = stock + ?, sales_count = GREATEST(sales_count - ?, 0),
+                                  status = IF(status = 'out_of_stock', 'active', status)
+                            WHERE id = ?", [$item['quantity'], $item['quantity'], $item['product_id']]);
+                    }
+                    $message .= ' The stock was put back.';
+                }
+            } elseif (!$stockTaken) {
+                // Moving an unpaid order forward by hand (e.g. paid outside the app) takes the stock now.
+                foreach ($items as $item) {
                     q("UPDATE products
-                          SET stock = stock + ?, sales_count = GREATEST(sales_count - ?, 0),
-                              status = IF(status = 'out_of_stock', 'active', status)
+                          SET stock = GREATEST(stock - ?, 0), sales_count = sales_count + ?,
+                              status = IF(stock = 0, 'out_of_stock', status)
                         WHERE id = ?", [$item['quantity'], $item['quantity'], $item['product_id']]);
                 }
+                $message .= ' The stock was taken.';
             }
             $pdo->commit();
-            flash('ok', in_array($new, ['cancelled', 'failed'], true)
-                ? 'Order marked as ' . $new . '. The customer was refunded and the stock was put back.'
-                : 'Order marked as ' . $new . '.');
+            flash('ok', $message);
         } catch (Throwable $error) {
             $pdo->rollBack();
             throw $error;
@@ -94,7 +113,10 @@ admin_header('Order #' . $id, 'orders');
     <div class="card">
       <h2>Customer</h2>
       <p><?= e($order['fullname']) ?><br><span class="muted"><?= e($order['email']) ?></span></p>
-      <p class="small"><span class="muted">Payment:</span> <?= e(ucfirst(str_replace('_', ' ', $order['payment_method']))) ?></p>
+      <p class="small"><span class="muted">Payment:</span> <?= e(payment_label($order['payment_method'])) ?>
+        <?php if (!empty($order['payway_tran_id'])): ?>
+          <span class="muted">· PayWay ID</span> <code><?= e($order['payway_tran_id']) ?></code>
+        <?php endif; ?></p>
       <?php if ($order['delivery_detail']): ?>
         <p class="small"><span class="muted">Delivery note:</span> <?= e($order['delivery_detail']) ?></p>
       <?php endif; ?>
@@ -113,7 +135,7 @@ admin_header('Order #' . $id, 'orders');
           <?php endforeach; ?>
         </select>
         <button class="btn primary" type="submit">Update status</button>
-        <p class="hint">Cancelled or failed refunds the wallet and puts the stock back.
+        <p class="hint">Cancelled or failed refunds the wallet and puts the stock back (ABA PayWay payments are refunded in the PayWay portal).
           "Received" is normally set by the customer in the app.</p>
       </form>
       <?php endif; ?>

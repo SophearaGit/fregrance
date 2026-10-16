@@ -101,6 +101,13 @@ if (!$installed && $checksPass && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST')
                     ->execute([$input['admin_name'], $candidate, strtolower($input['admin_email']),
                                password_hash($adminPassword, PASSWORD_BCRYPT, ['cost' => 12]), 'admin']);
 
+                // Team accounts (database/add-team-users.sql), if that file is there.
+                // An account with the same email as the admin above gets the file's password.
+                $teamFile = APP_ROOT . '/database/add-team-users.sql';
+                if (is_file($teamFile)) {
+                    run_sql_file($pdo, $teamFile);
+                }
+
                 $config = [
                     'db'                 => $db,
                     'jwt_secret'         => bin2hex(random_bytes(32)),
@@ -132,7 +139,7 @@ $apiUrl = api_base_url();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fragrance backend setup</title>
-<link rel="stylesheet" href="admin/assets/admin.css">
+<link rel="stylesheet" href="admin/assets/admin.css?v=<?= filemtime(__DIR__ . '/admin/assets/admin.css') ?>">
 </head>
 <body>
 <div class="center-page">

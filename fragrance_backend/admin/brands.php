@@ -83,22 +83,99 @@ admin_header('Brands', 'brands');
   <div class="flash bad"><?= e(implode(' ', $errors)) ?></div>
 <?php endif; ?>
 
-<form method="post" enctype="multipart/form-data" class="card" <?= $editing ? 'action="brands.php?edit=' . (int) $editing['id'] . '"' : '' ?>>
-  <h2><?= $editing ? 'Edit "' . e($editing['name']) . '"' : 'Add a brand' ?></h2>
+<?php $logoPreview = admin_image_src($form['image']); ?>
+<form method="post" enctype="multipart/form-data" class="card brand-form" <?= $editing ? 'action="brands.php?edit=' . (int) $editing['id'] . '"' : '' ?>>
   <?= csrf_field() ?>
-  <div class="grid">
-    <div class="col-4"><label for="name">Name</label>
-      <input type="text" id="name" name="name" value="<?= e($form['name']) ?>" maxlength="120" required></div>
-    <div class="col-4"><label for="image">Logo address</label>
-      <input type="text" id="image" name="image" value="<?= e($form['image']) ?>" placeholder="https://example.com/logo.png"></div>
-    <div class="col-4"><label for="logo">Or upload a logo</label>
-      <input type="file" id="logo" name="logo" accept="image/jpeg,image/png,image/webp,image/gif"></div>
+  <div class="brand-form-head">
+    <div>
+      <h2><?= $editing ? 'Edit "' . e($editing['name']) . '"' : 'Add a brand' ?></h2>
+      <p class="muted small">Give it a name and a logo. The logo shows on the Houses tab in the app.</p>
+    </div>
+    <?php if ($editing): ?><a class="btn small" href="brands.php">Cancel editing</a><?php endif; ?>
   </div>
-  <div class="form-actions" style="margin-top:14px">
-    <button class="btn primary" type="submit"><?= $editing ? 'Save changes' : 'Add brand' ?></button>
-    <?php if ($editing): ?><a href="brands.php">Cancel</a><?php endif; ?>
+
+  <div class="brand-form-body">
+    <!-- Logo: click or drop a file, or paste a link -->
+    <label class="logo-drop <?= $logoPreview !== '' ? 'has-image' : '' ?>" for="logo" data-drop>
+      <img src="<?= e($logoPreview !== '' ? $logoPreview : 'assets/no-image.svg') ?>" alt="" data-logo-preview referrerpolicy="no-referrer">
+      <span class="logo-drop-hint">
+        <strong>Drop a logo here</strong>
+        <span>or click to choose a file</span>
+      </span>
+      <input type="file" id="logo" name="logo" accept="image/jpeg,image/png,image/webp,image/gif">
+    </label>
+
+    <div class="brand-form-fields">
+      <div>
+        <label for="name">Brand name</label>
+        <input type="text" id="name" name="name" value="<?= e($form['name']) ?>" maxlength="120" required
+               placeholder="e.g. Maison Francis Kurkdjian" autocomplete="off">
+      </div>
+      <div>
+        <label for="image">Logo link <span class="muted small">(optional)</span></label>
+        <input type="text" id="image" name="image" value="<?= e($form['image']) ?>" placeholder="https://example.com/logo.png"
+               autocomplete="off">
+        <div class="hint">Paste a link to a logo, or use the box on the left to upload one. An upload wins over a link.</div>
+      </div>
+
+      <div class="brand-chip-preview">
+        <span class="muted small">In the app</span>
+        <span class="brand-chip">
+          <img src="<?= e($logoPreview !== '' ? $logoPreview : 'assets/no-image.svg') ?>" alt="" data-logo-preview referrerpolicy="no-referrer">
+          <span data-name-preview><?= e($form['name'] !== '' ? $form['name'] : 'Brand name') ?></span>
+        </span>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn primary" type="submit"><?= $editing ? 'Save changes' : 'Add brand' ?></button>
+        <button class="btn" type="button" data-clear-logo <?= $logoPreview === '' ? 'hidden' : '' ?>>Remove logo</button>
+      </div>
+    </div>
   </div>
 </form>
+
+<script>
+(function () {
+  var form = document.querySelector('.brand-form');
+  if (!form) return;
+  var drop = form.querySelector('[data-drop]');
+  var file = form.querySelector('#logo');
+  var link = form.querySelector('#image');
+  var name = form.querySelector('#name');
+  var previews = form.querySelectorAll('[data-logo-preview]');
+  var clear = form.querySelector('[data-clear-logo]');
+  var EMPTY = 'assets/no-image.svg';
+
+  function show(src) {
+    previews.forEach(function (img) { img.src = src || EMPTY; });
+    drop.classList.toggle('has-image', !!src);
+    clear.hidden = !src;
+  }
+  file.addEventListener('change', function () {
+    if (file.files && file.files[0]) show(URL.createObjectURL(file.files[0]));
+  });
+  link.addEventListener('input', function () {
+    if (!(file.files && file.files[0])) show(/^https?:\/\//i.test(link.value.trim()) ? link.value.trim() : '');
+  });
+  name.addEventListener('input', function () {
+    form.querySelector('[data-name-preview]').textContent = name.value.trim() || 'Brand name';
+  });
+  clear.addEventListener('click', function () { file.value = ''; link.value = ''; show(''); });
+
+  ['dragenter', 'dragover'].forEach(function (type) {
+    drop.addEventListener(type, function (e) { e.preventDefault(); drop.classList.add('dragging'); });
+  });
+  ['dragleave', 'drop'].forEach(function (type) {
+    drop.addEventListener(type, function (e) { e.preventDefault(); drop.classList.remove('dragging'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    if (e.dataTransfer && e.dataTransfer.files.length) {
+      file.files = e.dataTransfer.files;
+      file.dispatchEvent(new Event('change'));
+    }
+  });
+})();
+</script>
 
 <div class="card flush">
   <?php if (!$brands): ?>

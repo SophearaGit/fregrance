@@ -131,13 +131,15 @@ CREATE TABLE orders (
   currency        VARCHAR(8) NOT NULL DEFAULT 'USD',
   status          ENUM('pending','paid','processing','shipping','delivered','received','cancelled','failed')
                   NOT NULL DEFAULT 'pending',
-  payment_method  ENUM('wallet','credit_card','paypal','bank_transfer') NOT NULL,
+  payment_method  ENUM('wallet','credit_card','paypal','bank_transfer','aba_payway') NOT NULL,
   total_amount    DECIMAL(12,2) NOT NULL,
   delivery_detail VARCHAR(500) NULL,
+  payway_tran_id  VARCHAR(20) NULL,
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_orders_user (user_id, status),
+  UNIQUE KEY uq_orders_payway_tran (payway_tran_id),
   CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

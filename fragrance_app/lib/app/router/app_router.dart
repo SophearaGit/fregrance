@@ -24,10 +24,14 @@ import '../../features/brand/presentation/screens/brand_products_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../../features/cart/presentation/screens/cart_screen.dart';
 import '../../features/favorite/presentation/screens/favorite_screen.dart';
 import '../../features/product/presentation/screens/product_screen.dart';
 import '../../features/product/presentation/screens/product_detail_screen.dart';
+import '../../features/product/presentation/screens/search_screen.dart';
+import '../../features/order/presentation/screens/my_orders_screen.dart';
+import '../../features/order/presentation/screens/order_success_screen.dart';
 
 // Model Parameter
 import '../../features/product/data/model/product_model.dart';
@@ -127,7 +131,17 @@ final List<RouteBase> branchRoutes = [
 
 final List<RouteBase> fullScreens = [
   GoRoute(path: Routes.profile, builder: (_, _) => const ProfileScreen()),
+  GoRoute(
+    path: Routes.profileEdit,
+    builder: (_, _) => const EditProfileScreen(),
+  ),
   GoRoute(path: Routes.cart, builder: (_, _) => const CartScreen()),
+  GoRoute(path: Routes.orders, builder: (_, _) => const MyOrdersScreen()),
+  GoRoute(
+    path: Routes.orderSuccess,
+    builder: (context, state) =>
+        OrderSuccessScreen(args: state.extra as OrderSuccessArgs),
+  ),
   GoRoute(path: Routes.favorite, builder: (_, _) => const FavoriteScreen()),
 
   GoRoute(path: Routes.product, builder: (_, _) => const ProductScreen()),
@@ -150,5 +164,11 @@ final List<RouteBase> fullScreens = [
   GoRoute(
     path: Routes.discoveryProducts,
     builder: (context, state) => const DiscoveryProductsScreen(),
+  ),
+
+  GoRoute(
+    path: Routes.search,
+    builder: (context, state) =>
+        SearchScreen(initialQuery: state.uri.queryParameters['q'] ?? ''),
   ),
 ];

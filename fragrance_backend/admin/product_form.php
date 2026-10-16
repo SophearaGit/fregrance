@@ -290,13 +290,22 @@ admin_header($existing ? 'Edit product' : 'Add product', 'products');
 
   <div class="card">
     <h2>Images</h2>
-    <?php if ($previewImages): ?>
-      <div class="image-list">
-        <?php foreach ($previewImages as $n => $image): ?>
-          <figure><img src="<?= e(admin_image_src($image)) ?>" alt="" loading="lazy" referrerpolicy="no-referrer">Image <?= $n + 1 ?></figure>
-        <?php endforeach; ?>
+    <!-- Filled in by the script below from the image list: click ✕ to remove, ★ to make it the main image. -->
+    <div class="image-editor" data-image-editor></div>
+    <div class="image-notice" data-image-notice hidden></div>
+    <div class="photo-finder" data-photo-finder>
+      <label for="photo_query">Find photos online</label>
+      <div class="photo-finder-bar">
+        <input type="search" id="photo_query" placeholder="e.g. Chanel No 5" autocomplete="off">
+        <button class="btn" type="button" data-photo-search>Search</button>
       </div>
-    <?php endif; ?>
+      <div class="photo-results" data-photo-results></div>
+      <div class="photo-finder-note">
+        Photos come from <a href="https://world.openbeautyfacts.org" target="_blank" rel="noopener">Open Beauty Facts</a>,
+        a free open database (photos may be reused under its open licence). Click a photo to add it below, then save.
+      </div>
+    </div>
+
     <div class="grid">
       <div class="col-12"><label for="images">Image addresses, one per line</label>
         <textarea id="images" name="images" rows="4" placeholder="https://example.com/photo.png"><?= e($form['images']) ?></textarea>
@@ -328,4 +337,175 @@ admin_header($existing ? 'Edit product' : 'Add product', 'products');
     <a href="products.php">Cancel</a>
   </div>
 </form>
+<script>
+(function () {
+  var box = document.querySelector('[data-photo-finder]');
+  if (!box) return;
+  var query = box.querySelector('#photo_query');
+  var button = box.querySelector('[data-photo-search]');
+  var results = box.querySelector('[data-photo-results]');
+  var images = document.getElementById('images');
+  var timer;
+
+  // Start from "Brand Name" of the product being edited.
+  function suggested() {
+    var brandSelect = document.getElementById('brand_id');
+    var newBrand = document.getElementById('new_brand');
+    var brand = (newBrand && newBrand.value.trim())
+      || (brandSelect && brandSelect.value ? brandSelect.options[brandSelect.selectedIndex].text : '');
+    var name = (document.getElementById('name') || {}).value || '';
+    return (brand + ' ' + name).trim();
+  }
+  query.value = suggested();
+  ['name', 'brand_id', 'new_brand'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('change', function () { if (!query.dataset.touched) query.value = suggested(); });
+  });
+  query.addEventListener('input', function () {
+    query.dataset.touched = '1';
+    clearTimeout(timer);
+    timer = setTimeout(search, 600); // search as you type
+  });
+  query.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); search(); } });
+  button.addEventListener('click', search);
+
+  function message(text) { results.innerHTML = '<div class="muted small">' + text + '</div>'; }
+
+  function search() {
+    var q = query.value.trim();
+    if (q.length < 2) { message('Type a perfume name to search.'); return; }
+    message('Searching…');
+    fetch('photo_search.php?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) { message(data.error); return; }
+        if (!data.results.length) { message('No photos found. Try just the brand, or a shorter name.'); return; }
+        results.innerHTML = '';
+        data.results.forEach(function (item) {
+          var card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'photo-result';
+          var img = document.createElement('img');
+          img.src = item.thumb; img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+          var text = document.createElement('span');
+          var title = document.createElement('strong');
+          title.textContent = item.name;
+          text.appendChild(title);
+          text.appendChild(document.createTextNode([item.brand, item.size].filter(Boolean).join(' · ')));
+          card.appendChild(img); card.appendChild(text);
+          if (images.value.indexOf(item.image) !== -1) card.classList.add('added');
+          card.addEventListener('click', function () {
+            if (images.value.indexOf(item.image) !== -1) return;
+            images.value = (images.value.trim() ? images.value.trim() + '\n' : '') + item.image;
+            card.classList.add('added');
+          });
+          results.appendChild(card);
+        });
+      })
+      .catch(function () { message('Could not search right now. Is the internet on?'); });
+  }
+})();
+</script>
+<script>
+(function () {
+  var editor = document.querySelector('[data-image-editor]');
+  var notice = document.querySelector('[data-image-notice]');
+  var text = document.getElementById('images');
+  var main = document.getElementById('main_image');
+  if (!editor || !text || !main) return;
+  var NO_IMAGE = 'assets/no-image.svg';
+  var autoCleaned = false;
+  var undo = null;
+
+  function lines() { return text.value.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean); }
+  function setLines(list) { text.value = list.join('\n'); }
+  function mainIndex() { return Math.max(1, parseInt(main.value, 10) || 1); }
+  function src(value) { return /^https?:\/\//i.test(value) ? value : '../' + value.replace(/^\/+/, ''); }
+
+  function remove(positions) {
+    var list = lines();
+    var current = mainIndex();
+    var kept = list.filter(function (_, i) { return positions.indexOf(i + 1) === -1; });
+    var before = positions.filter(function (n) { return n < current; }).length;
+    var mainGone = positions.indexOf(current) !== -1;
+    setLines(kept);
+    main.value = kept.length ? (mainGone ? 1 : current - before) : 1;
+    render();
+  }
+
+  var generation = 0; // only the newest drawing of the list may clean it up
+
+  function render() {
+    var mine = ++generation;
+    var list = lines();
+    var current = Math.min(mainIndex(), Math.max(list.length, 1));
+    editor.innerHTML = '';
+    if (!list.length) {
+      editor.innerHTML = '<div class="image-empty"><img src="' + NO_IMAGE + '" alt=""><span>No photos yet. Find one online, paste a link or upload below.</span></div>';
+      return;
+    }
+    var pending = list.length, broken = [];
+    list.forEach(function (value, i) {
+      var tile = document.createElement('figure');
+      tile.className = 'image-tile' + (i + 1 === current ? ' is-main' : '');
+      var img = document.createElement('img');
+      img.alt = '';
+      img.loading = 'eager';
+      img.referrerPolicy = 'no-referrer';
+      img.dataset.noFallback = '1';
+      img.onload = function () { done(); };
+      img.onerror = function () {
+        img.onerror = null;
+        img.src = NO_IMAGE;
+        tile.classList.add('is-broken');
+        broken.push(i + 1);
+        done();
+      };
+      img.src = src(value);
+      var star = document.createElement('button');
+      star.type = 'button'; star.className = 'tile-main'; star.title = 'Make this the main image';
+      star.textContent = i + 1 === current ? '★ Main' : '☆';
+      star.onclick = function () { main.value = i + 1; render(); };
+      var x = document.createElement('button');
+      x.type = 'button'; x.className = 'tile-remove'; x.title = 'Remove this image'; x.textContent = '✕';
+      x.onclick = function () { undo = { text: text.value, main: main.value }; remove([i + 1]); say('Image removed.'); };
+      var caption = document.createElement('figcaption');
+      caption.textContent = 'Image ' + (i + 1);
+      tile.appendChild(img); tile.appendChild(star); tile.appendChild(x); tile.appendChild(caption);
+      editor.appendChild(tile);
+    });
+
+    function done() {
+      if (mine !== generation) return; // the list changed meanwhile
+      if (--pending > 0) return;
+      // Broken links next to working photos are cleaned up once, automatically.
+      if (!autoCleaned && broken.length && broken.length < list.length) {
+        autoCleaned = true;
+        undo = { text: text.value, main: main.value };
+        remove(broken.sort(function (a, b) { return a - b; }));
+        say(broken.length + ' broken image' + (broken.length === 1 ? ' was' : 's were') + ' removed. Save to keep this.');
+      }
+    }
+  }
+
+  function say(message) {
+    notice.hidden = false;
+    notice.innerHTML = '';
+    notice.appendChild(document.createTextNode(message + ' '));
+    if (undo) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn small'; b.textContent = 'Undo';
+      b.onclick = function () { text.value = undo.text; main.value = undo.main; undo = null; notice.hidden = true; render(); };
+      notice.appendChild(b);
+    }
+  }
+
+  text.addEventListener('input', function () { clearTimeout(render.t); render.t = setTimeout(render, 400); });
+  main.addEventListener('change', render);
+  // Photos picked in "Find photos online" are added to the text box: show them at once.
+  var results = document.querySelector('[data-photo-results]');
+  if (results) results.addEventListener('click', function () { setTimeout(render, 0); });
+  render();
+})();
+</script>
 <?php admin_footer();

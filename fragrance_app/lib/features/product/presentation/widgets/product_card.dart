@@ -77,9 +77,24 @@ final class ProductCard extends StatelessWidget {
                         height: 32,
                         child: IconButton(
                           padding: EdgeInsets.zero,
-                          onPressed: () async => await context
-                              .read<CartProvider>()
-                              .addId(product.id),
+                          onPressed: () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            final added = await context
+                                .read<CartProvider>()
+                                .addId(product.id, stock: product.stock);
+                            messenger
+                              ..hideCurrentSnackBar()
+                              ..showSnackBar(
+                                SnackBar(
+                                  duration: const Duration(seconds: 2),
+                                  content: Text(
+                                    added
+                                        ? '${product.name} added to cart'
+                                        : 'No more ${product.name} in stock',
+                                  ),
+                                ),
+                              );
+                          },
                           icon: Icon(Iconsax.add_square_copy, size: 20),
                         ),
                       ),

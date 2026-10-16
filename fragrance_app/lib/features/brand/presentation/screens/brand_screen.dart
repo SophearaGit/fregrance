@@ -15,6 +15,8 @@ class BrandScreen extends StatefulWidget {
 }
 
 class _BrandScreenState extends State<BrandScreen> {
+  String _query = '';
+
   @override
   void initState() {
     super.initState();
@@ -34,15 +36,11 @@ class _BrandScreenState extends State<BrandScreen> {
           // ─────────────────────────────────────────
           // Search
           // ─────────────────────────────────────────
-          _BrandSearchBar(
-            onChanged: (value) {
-              // TODO: filter brands
-            },
-          ),
+          _BrandSearchBar(onChanged: (value) => setState(() => _query = value)),
 
           const SizedBox(height: AppConst.spaceXL),
 
-          const BrandGridLayout(),
+          BrandGridLayout(query: _query),
         ],
       ),
     );

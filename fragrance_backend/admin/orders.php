@@ -59,7 +59,7 @@ admin_header('Orders', 'orders');
         <td><?= e($o['fullname']) ?><div class="muted small"><?= e($o['email']) ?></div></td>
         <td class="nowrap"><?= show_date($o['created_at']) ?></td>
         <td class="num"><?= (int) $o['item_count'] ?></td>
-        <td><?= e(ucfirst(str_replace('_', ' ', $o['payment_method']))) ?></td>
+        <td><?= e(payment_label($o['payment_method'])) ?></td>
         <td><?= status_badge($o['status']) ?></td>
         <td class="num"><?= money($o['total_amount'], $o['currency']) ?></td>
       </tr>

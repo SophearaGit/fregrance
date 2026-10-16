@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 import '../../../../core/core.dart';
+import '../../../../shared/shared.dart';
 
 class ProductDetailCarousel extends StatefulWidget {
   final List<String> images;
@@ -68,16 +69,13 @@ class _ProductDetailCarouselState extends State<ProductDetailCarousel> {
             return Container(
               width: double.infinity,
               color: colorScheme.surfaceContainerHighest.withAlpha(80),
-              child: Image.network(
-                imageUrl ?? '',
+              // AppImage shows the "No image" picture when a photo is missing or broken.
+              child: AppImage(
+                image: imageUrl ?? '',
+                width: double.infinity,
+                height: 340,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Center(
-                  child: Icon(
-                    Icons.broken_image_outlined,
-                    size: 48,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
+                variant: ImageVariant.square,
               ),
             );
           },

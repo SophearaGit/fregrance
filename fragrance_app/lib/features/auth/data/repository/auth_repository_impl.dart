@@ -12,4 +12,24 @@ final class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
   }) async => _remoteDatasource.login(email: email, password: password);
+
+  @override
+  Future<AuthResponseModel> register({
+    required String fullname,
+    required String username,
+    required String email,
+    required String password,
+  }) => _remoteDatasource.register(
+    fullname: fullname,
+    username: username,
+    email: email,
+    password: password,
+  );
+
+  @override
+  Future<String> getGoogleClientId() => _remoteDatasource.getGoogleClientId();
+
+  @override
+  Future<AuthResponseModel> loginWithGoogle(String idToken) =>
+      _remoteDatasource.loginWithGoogle(idToken);
 }

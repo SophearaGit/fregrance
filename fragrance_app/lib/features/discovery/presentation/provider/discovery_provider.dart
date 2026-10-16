@@ -170,6 +170,60 @@ final class DiscoveryProvider extends AppProvider {
     );
   }
 
+  /// Reload the filter lists and the products on screen quietly.
+  /// Called by LiveUpdates.
+  Future<void> refresh() async {
+    if (isLoading || _isLoadingProducts) return;
+
+    if (_moods.isNotEmpty) _moods = (await _repository.getMoods()).data;
+    if (_notes != null) _notes = (await _repository.getNotes()).data;
+    if (_occasions.isNotEmpty) {
+      _occasions = (await _repository.getOccasions()).data;
+    }
+    if (_scentFamilies.isNotEmpty) {
+      _scentFamilies = (await _repository.getScentFamilies()).data;
+    }
+
+    // _page goes above 1 once products have been loaded at least once.
+    if (_page > 1) {
+      final filters = (
+        _selectedMood,
+        _selectedNote,
+        _selectedOccasion,
+        _selectedScentFamily,
+        _selectedType,
+      );
+      final result = await reloadPages(
+        loadedCount: _discoveryProducts.length,
+        limit: _limit,
+        fetch: (page) => _repository.getFilter(
+          mood: filters.$1,
+          note: filters.$2,
+          occasion: filters.$3,
+          family: filters.$4,
+          type: filters.$5,
+          page: page,
+          limit: _limit,
+        ),
+      );
+      final stillSameFilters =
+          filters ==
+          (
+            _selectedMood,
+            _selectedNote,
+            _selectedOccasion,
+            _selectedScentFamily,
+            _selectedType,
+          );
+      if (stillSameFilters && !_isLoadingProducts) {
+        _discoveryProducts = result.items;
+        _hasMore = result.hasNext;
+        _page = result.pages + 1;
+      }
+    }
+    notifyListeners();
+  }
+
   void _resetAndFetch() async {
     notifyListeners();
     await getDiscoveryProducts();

@@ -109,12 +109,12 @@ class MoreScreen extends StatelessWidget {
                   _ActionItem(
                     icon: Iconsax.truck,
                     label: 'Shipping',
-                    onTap: () {},
+                    onTap: () => context.push(Routes.shipping),
                   ),
                   _ActionItem(
                     icon: Iconsax.star_1,
                     label: 'Reviews',
-                    onTap: () {},
+                    onTap: () => context.push(Routes.reviews),
                   ),
                   _ActionItem(
                     icon: Iconsax.clock,
@@ -124,9 +124,7 @@ class MoreScreen extends StatelessWidget {
                   _ActionItem(
                     icon: Iconsax.heart,
                     label: 'Favorites',
-                    onTap: () {
-                      // context.push(Routes.favorite);
-                    },
+                    onTap: () => context.push(Routes.favorite),
                   ),
                   _ActionItem(
                     icon: Iconsax.bag_2,
@@ -136,7 +134,7 @@ class MoreScreen extends StatelessWidget {
                   _ActionItem(
                     icon: Iconsax.location,
                     label: 'Address',
-                    onTap: () {},
+                    onTap: () => context.push(Routes.addresses),
                   ),
                 ],
               ),

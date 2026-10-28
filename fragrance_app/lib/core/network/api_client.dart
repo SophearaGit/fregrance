@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 
 import '../core.dart';
@@ -93,13 +95,27 @@ final class ApiClient {
   ApiException _handleDioException(DioException error) {
     final response = error.response;
 
+    final status = response?.statusCode;
+
+    // The saved sign-in is no longer accepted (expired, or the database was
+    // set up again): forget it, so the app asks the customer to sign in again.
+    if (status == 401 && AuthPreferences.token != null) {
+      unawaited(AuthPreferences.clear());
+      return const ApiException(
+        status: 401,
+        error: 'UnauthorizedError',
+        message: 'Your sign-in has expired. Please sign in again.',
+      );
+    }
+
     if (response?.data is Map<String, dynamic>) {
       final data = response!.data as Map<String, dynamic>;
 
+      // "message" is the readable sentence; "error" is a short code.
       return ApiException(
-        status: data['status'] as int? ?? response.statusCode ?? 500,
-        error: data['message'] as String? ?? 'Something went wrong.',
-        message: data['error'] as String? ?? 'ApiError',
+        status: data['status'] as int? ?? status ?? 500,
+        error: data['error'] as String? ?? 'ApiError',
+        message: data['message'] as String? ?? 'Something went wrong.',
       );
     }
 

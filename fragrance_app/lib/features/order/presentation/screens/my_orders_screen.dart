@@ -179,6 +179,30 @@ class _OrderCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: textTheme.bodyMedium,
             ),
+            if ((order.deliveryDetail ?? '').isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 16,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      order.deliveryDetail!.split('\n').last,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: AppConst.spaceSM),
             Row(
               children: [

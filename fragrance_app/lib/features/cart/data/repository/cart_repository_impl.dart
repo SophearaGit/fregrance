@@ -50,12 +50,20 @@ final class CartRepositoryImpl implements CartRepository {
   }
 
   @override
-  Future<String?> placeOrder(List<CartItem> items) =>
-      _remoteDatasource.placeOrder(_orderLines(items));
+  Future<String?> placeOrder(List<CartItem> items, {String? deliveryDetail}) =>
+      _remoteDatasource.placeOrder(
+        _orderLines(items),
+        deliveryDetail: deliveryDetail,
+      );
 
   @override
-  Future<PaywayCheckout> startPayway(List<CartItem> items) =>
-      _remoteDatasource.startPayway(_orderLines(items));
+  Future<PaywayCheckout> startPayway(
+    List<CartItem> items, {
+    String? deliveryDetail,
+  }) => _remoteDatasource.startPayway(
+    _orderLines(items),
+    deliveryDetail: deliveryDetail,
+  );
 
   @override
   Future<String> checkPayway(String tranId) =>

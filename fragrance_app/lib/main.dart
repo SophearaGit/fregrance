@@ -26,6 +26,7 @@ void main() async {
     searchProvider.refresh,
     cartProvider.refresh,
     orderProvider.refresh,
+    favoriteProvider.refresh,
   ]);
 
   runApp(MultiProvider(providers: appProviders, child: const App()));

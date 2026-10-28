@@ -5,6 +5,8 @@ SET NAMES utf8mb4;
 SET time_zone = '+00:00';
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS favorites;
+DROP TABLE IF EXISTS product_reviews;
 DROP TABLE IF EXISTS order_items;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS addresses;
@@ -111,6 +113,7 @@ CREATE TABLE wallets (
 CREATE TABLE addresses (
   id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id      INT UNSIGNED NOT NULL,
+  label        VARCHAR(40)  NOT NULL DEFAULT '',
   name         VARCHAR(120) NOT NULL,
   phone        VARCHAR(40)  NOT NULL,
   address_line VARCHAR(255) NOT NULL,
@@ -157,4 +160,31 @@ CREATE TABLE order_items (
   KEY idx_order_items_product (product_id),
   CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
   CONSTRAINT fk_order_items_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Customer reviews: one per customer per product; rating 1-5.
+CREATE TABLE product_reviews (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  product_id INT UNSIGNED NOT NULL,
+  user_id    INT UNSIGNED NOT NULL,
+  rating     TINYINT UNSIGNED NOT NULL,
+  comment    VARCHAR(1000) NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_review_product_user (product_id, user_id),
+  KEY idx_review_user (user_id),
+  CONSTRAINT fk_review_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
+  CONSTRAINT fk_review_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Products a customer saved with the heart button.
+CREATE TABLE favorites (
+  user_id    INT UNSIGNED NOT NULL,
+  product_id INT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id, product_id),
+  KEY idx_favorite_product (product_id),
+  CONSTRAINT fk_favorite_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_favorite_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -280,7 +280,8 @@ function api_product_batch(): void
 function api_changes(): void
 {
     $parts = [];
-    foreach (db()->query('CHECKSUM TABLE products, product_images, product_attributes, brands, orders') as $row) {
+    ensure_social_schema();
+    foreach (db()->query('CHECKSUM TABLE products, product_images, product_attributes, brands, orders, product_reviews') as $row) {
         $parts[] = $row['Table'] . '=' . $row['Checksum'];
     }
     header('Cache-Control: no-store');

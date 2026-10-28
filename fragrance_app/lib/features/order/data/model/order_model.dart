@@ -7,6 +7,9 @@ final class OrderModel {
   final DateTime createdAt;
   final List<OrderItemModel> items;
 
+  /// Where to deliver (receiver, phone and address), if given.
+  final String? deliveryDetail;
+
   const OrderModel({
     required this.id,
     required this.status,
@@ -14,6 +17,7 @@ final class OrderModel {
     required this.totalAmount,
     required this.createdAt,
     required this.items,
+    this.deliveryDetail,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) => OrderModel(
@@ -28,6 +32,7 @@ final class OrderModel {
       for (final item in (json['items'] as List<dynamic>? ?? []))
         OrderItemModel.fromJson(item as Map<String, dynamic>),
     ],
+    deliveryDetail: json['deliveryDetail'] as String?,
   );
 
   int get itemCount => items.fold(0, (sum, item) => sum + item.quantity);

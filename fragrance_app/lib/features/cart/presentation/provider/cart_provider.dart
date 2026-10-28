@@ -113,7 +113,7 @@ final class CartProvider extends AppProvider {
   });
 
   /// Pay for everything in the cart from the customer's wallet.
-  Future<CheckoutResult> checkout() async {
+  Future<CheckoutResult> checkout({String? deliveryDetail}) async {
     if (_cartItems.isEmpty || _isCheckingOut) {
       return (
         success: false,
@@ -134,7 +134,10 @@ final class CartProvider extends AppProvider {
     _isCheckingOut = true;
     notifyListeners();
     try {
-      final orderId = await _repository.placeOrder(_cartItems);
+      final orderId = await _repository.placeOrder(
+        _cartItems,
+        deliveryDetail: deliveryDetail,
+      );
       await CartPreferences.clear();
       _productIds = [];
       _cartItems = [];
@@ -167,7 +170,7 @@ final class CartProvider extends AppProvider {
   }
 
   /// ABA PayWay step 1: save a pending order and get its payment page.
-  Future<PaywayStart> startPayway() async {
+  Future<PaywayStart> startPayway({String? deliveryDetail}) async {
     if (_cartItems.isEmpty || _isCheckingOut) {
       return (checkout: null, message: 'Your cart is empty.', needsSignIn: false);
     }
@@ -181,7 +184,10 @@ final class CartProvider extends AppProvider {
     _isCheckingOut = true;
     notifyListeners();
     try {
-      final checkout = await _repository.startPayway(_cartItems);
+      final checkout = await _repository.startPayway(
+        _cartItems,
+        deliveryDetail: deliveryDetail,
+      );
       return (checkout: checkout, message: '', needsSignIn: false);
     } on ApiException catch (error) {
       await _fetchQuietly();

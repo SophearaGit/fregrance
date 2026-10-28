@@ -7,10 +7,13 @@ abstract interface class CartRepository {
 
   /// Pay for [items] from the signed-in customer's wallet.
   /// Returns the new order's id.
-  Future<String?> placeOrder(List<CartItem> items);
+  Future<String?> placeOrder(List<CartItem> items, {String? deliveryDetail});
 
   /// Start paying for [items] with ABA PayWay.
-  Future<PaywayCheckout> startPayway(List<CartItem> items);
+  Future<PaywayCheckout> startPayway(
+    List<CartItem> items, {
+    String? deliveryDetail,
+  });
 
   /// 'paid', 'pending' or 'cancelled'.
   Future<String> checkPayway(String tranId);

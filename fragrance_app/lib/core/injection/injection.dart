@@ -32,6 +32,11 @@ import '../../features/discovery/presentation/provider/discovery_provider.dart';
 
 import '../../features/order/data/datasources/order_remote_datasource.dart';
 import '../../features/order/presentation/provider/order_provider.dart';
+import '../../features/address/data/datasources/address_remote_datasource.dart';
+import '../../features/address/presentation/provider/address_provider.dart';
+import '../../features/favorite/data/favorite_remote_datasource.dart';
+import '../../features/favorite/presentation/provider/favorite_provider.dart';
+import '../../features/review/data/review_remote_datasource.dart';
 // ---------------------------------------------------
 
 // dart format off
@@ -95,4 +100,18 @@ final discoveryProvider   = DiscoveryProvider(discoveryRepository);
 // ====================[Orders]======================
 final orderDatasource = OrderRemoteDatasourceImpl(apiClient);
 final orderProvider   = OrderProvider(orderDatasource);
+// ==================================================
+
+// ====================[Addresses]===================
+final addressDatasource = AddressRemoteDatasourceImpl(apiClient);
+final addressProvider   = AddressProvider(addressDatasource);
+// ==================================================
+
+// ====================[Favorites]===================
+final favoriteDatasource = FavoriteRemoteDatasourceImpl(apiClient);
+final favoriteProvider   = FavoriteProvider(favoriteDatasource);
+// ==================================================
+
+// ====================[Reviews]=====================
+final reviewDatasource = ReviewRemoteDatasourceImpl(apiClient);
 // ==================================================

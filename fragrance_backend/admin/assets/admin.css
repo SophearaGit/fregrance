@@ -332,3 +332,7 @@ span.thumb { display: block; background: #f4e8ed url("no-image.svg") center / co
   display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 8px 12px;
   background: var(--warn-soft); color: var(--warn); border-radius: 8px; font-size: 0.88rem;
 }
+
+/* Review stars */
+.stars { color: #e0a526; letter-spacing: 1px; font-size: 0.95rem; }
+.stars .off { color: #e6dfe2; }

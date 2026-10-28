@@ -20,6 +20,52 @@ const ATTRIBUTE_MAP = [
 const PRODUCT_STATUSES = ['active', 'inactive', 'out_of_stock'];
 const PRODUCT_GENDERS  = ['men', 'women', 'unisex'];
 
+/**
+ * Reviews and favorites tables. Created on first use, so databases made before
+ * these features existed keep working without reinstalling.
+ */
+function ensure_social_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $pdo = db();
+    $pdo->exec("CREATE TABLE IF NOT EXISTS product_reviews (
+        id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        product_id INT UNSIGNED NOT NULL,
+        user_id    INT UNSIGNED NOT NULL,
+        rating     TINYINT UNSIGNED NOT NULL,
+        comment    VARCHAR(1000) NOT NULL DEFAULT '',
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_review_product_user (product_id, user_id),
+        KEY idx_review_user (user_id),
+        CONSTRAINT fk_review_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
+        CONSTRAINT fk_review_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS favorites (
+        user_id    INT UNSIGNED NOT NULL,
+        product_id INT UNSIGNED NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, product_id),
+        KEY idx_favorite_product (product_id),
+        CONSTRAINT fk_favorite_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        CONSTRAINT fk_favorite_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $done = true;
+}
+
+/** After a review changes: the product's rating becomes the average of its reviews. */
+function refresh_product_rating(int $productId): void
+{
+    $row = q('SELECT COUNT(*) AS n, AVG(rating) AS avg FROM product_reviews WHERE product_id = ?', [$productId])->fetch();
+    if ((int) $row['n'] > 0) {
+        q('UPDATE products SET rating = ? WHERE id = ?', [round((float) $row['avg'], 1), $productId]);
+    }
+}
+
 /** Base SELECT for products joined with their brand. */
 function product_select(): string
 {
@@ -52,6 +98,13 @@ function hydrate_products(array $rows): array
         $images[(int) $img['product_id']][] = public_image_url($img['url']);
     }
 
+    ensure_social_schema();
+    $reviewCounts = [];
+    foreach (db()->query("SELECT product_id, COUNT(*) AS n FROM product_reviews
+                          WHERE product_id IN ($in) GROUP BY product_id") as $count) {
+        $reviewCounts[(int) $count['product_id']] = (int) $count['n'];
+    }
+
     $attributes = [];
     foreach (db()->query("SELECT product_id, type, value FROM product_attributes
                           WHERE product_id IN ($in) ORDER BY sort_order, id") as $attr) {
@@ -77,6 +130,7 @@ function hydrate_products(array $rows): array
             'stock'             => (int) $r['stock'],
             'salesCount'        => (int) $r['sales_count'],
             'rating'            => json_number($r['rating']),
+            'reviewCount'       => $reviewCounts[$id] ?? 0,
             'tags'              => $list('tag'),
             'moods'             => $list('mood'),
             'occasions'         => $list('occasion'),

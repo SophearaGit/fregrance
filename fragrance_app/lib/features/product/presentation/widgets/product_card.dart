@@ -8,6 +8,7 @@ import '../../../../app/theme/app_text_styles.dart';
 import '../../../../core/core.dart';
 import '../../../../shared/shared.dart';
 import '../../../cart/presentation/provider/cart_provider.dart';
+import '../../../favorite/presentation/widgets/favorite_button.dart';
 import '../../data/model/product_model.dart';
 
 final class ProductCard extends StatelessWidget {
@@ -28,14 +29,27 @@ final class ProductCard extends StatelessWidget {
           children: [
             // FIX 2: Expanded image lets it fill available card space without overflowing
             Expanded(
-              child: AppImage(
-                image: product.images.displayImage(product.defaultImageIndex),
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(AppConst.radiusSM),
-                ),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: AppImage(
+                      image: product.images.displayImage(
+                        product.defaultImageIndex,
+                      ),
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.cover,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(AppConst.radiusSM),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: FavoriteButton(product: product, compact: true),
+                  ),
+                ],
               ),
             ),
             // Details

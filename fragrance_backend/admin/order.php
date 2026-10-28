@@ -118,7 +118,7 @@ admin_header('Order #' . $id, 'orders');
           <span class="muted">· PayWay ID</span> <code><?= e($order['payway_tran_id']) ?></code>
         <?php endif; ?></p>
       <?php if ($order['delivery_detail']): ?>
-        <p class="small"><span class="muted">Delivery note:</span> <?= e($order['delivery_detail']) ?></p>
+        <p class="small"><span class="muted">Deliver to:</span><br><?= nl2br(e($order['delivery_detail'])) ?></p>
       <?php endif; ?>
     </div>
 

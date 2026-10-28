@@ -31,7 +31,12 @@ import '../../features/product/presentation/screens/product_screen.dart';
 import '../../features/product/presentation/screens/product_detail_screen.dart';
 import '../../features/product/presentation/screens/search_screen.dart';
 import '../../features/order/presentation/screens/my_orders_screen.dart';
+import '../../features/address/data/model/address_model.dart';
+import '../../features/address/presentation/screens/address_form_screen.dart';
+import '../../features/address/presentation/screens/addresses_screen.dart';
 import '../../features/order/presentation/screens/order_success_screen.dart';
+import '../../features/order/presentation/screens/shipping_screen.dart';
+import '../../features/review/presentation/screens/my_reviews_screen.dart';
 
 // Model Parameter
 import '../../features/product/data/model/product_model.dart';
@@ -137,6 +142,18 @@ final List<RouteBase> fullScreens = [
   ),
   GoRoute(path: Routes.cart, builder: (_, _) => const CartScreen()),
   GoRoute(path: Routes.orders, builder: (_, _) => const MyOrdersScreen()),
+  GoRoute(path: Routes.shipping, builder: (_, _) => const ShippingScreen()),
+  GoRoute(path: Routes.reviews, builder: (_, _) => const MyReviewsScreen()),
+  GoRoute(
+    path: Routes.addresses,
+    builder: (context, state) =>
+        AddressesScreen(pick: state.uri.queryParameters['pick'] == '1'),
+  ),
+  GoRoute(
+    path: Routes.addressForm,
+    builder: (context, state) =>
+        AddressFormScreen(address: state.extra as AddressModel?),
+  ),
   GoRoute(
     path: Routes.orderSuccess,
     builder: (context, state) =>

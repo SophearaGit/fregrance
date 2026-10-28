@@ -144,6 +144,7 @@ function address_json(array $row): array
 {
     return [
         'userId'      => (string) $row['user_id'],
+        'label'       => (string) ($row['label'] ?? ''),
         'name'        => $row['name'],
         'phone'       => $row['phone'],
         'addressLine' => $row['address_line'],
@@ -157,51 +158,108 @@ function address_json(array $row): array
     ];
 }
 
-/** GET /address : the customer's addresses, default one first. */
-function api_address_list(): void
+/** Databases made before addresses had a label ("Home", "Work") get the column once. */
+function address_ensure_schema(): void
 {
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $has = q("SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'addresses' AND COLUMN_NAME = 'label'")->fetchColumn();
+    if (!$has) {
+        db()->exec("ALTER TABLE addresses ADD COLUMN label VARCHAR(40) NOT NULL DEFAULT '' AFTER user_id");
+    }
+    $done = true;
+}
+
+/** The signed-in customer's id (404 when the account was deleted). */
+function address_user_id(): int
+{
+    address_ensure_schema();
     $auth = require_auth('user');
     $userId = (int) $auth['id'];
-
     if (!q('SELECT 1 FROM users WHERE id = ?', [$userId])->fetchColumn()) {
-        json_response(404, ['message' => 'User not found.']);
+        json_response(404, ['message' => 'User not found.', 'data' => null]);
     }
+    return $userId;
+}
+
+/** One of the customer's own addresses, or a 404 reply. */
+function owned_address(int $userId, string $id): array
+{
+    $row = q('SELECT * FROM addresses WHERE id = ? AND user_id = ?', [(int) $id, $userId])->fetch();
+    if (!$row) {
+        json_response(404, ['message' => 'Address not found.', 'data' => null]);
+    }
+    return $row;
+}
+
+/**
+ * Read and check the address fields from the request body.
+ * Label (e.g. "Home"), receiver name and postal code are optional; the rest are required.
+ */
+function address_input(mixed $body): array
+{
+    $fields = [
+        'label'       => mb_substr(body_string($body, 'label'), 0, 40),
+        'name'        => mb_substr(body_string($body, 'name'), 0, 120),
+        'phone'       => mb_substr(body_string($body, 'phone'), 0, 40),
+        'addressLine' => mb_substr(body_string($body, 'addressLine'), 0, 255),
+        'city'        => mb_substr(body_string($body, 'city'), 0, 120),
+        'province'    => mb_substr(body_string($body, 'province'), 0, 120),
+        'postalCode'  => mb_substr(body_string($body, 'postalCode'), 0, 20),
+    ];
+    $missing = [];
+    foreach (['name' => 'receiver name', 'phone' => 'phone number', 'addressLine' => 'street address',
+              'city' => 'city / district', 'province' => 'province'] as $key => $label) {
+        if ($fields[$key] === '') {
+            $missing[] = $label;
+        }
+    }
+    if ($missing) {
+        json_response(400, ['message' => 'Please fill in the ' . implode(', ', $missing) . '.', 'data' => null]);
+    }
+    if (!preg_match('/^[0-9+()\s-]{6,20}$/', $fields['phone'])) {
+        json_response(400, ['message' => 'That phone number does not look right.', 'data' => null]);
+    }
+    return $fields;
+}
+
+/** Make sure the customer has exactly one default address when they have any. */
+function address_fix_default(int $userId): void
+{
+    $hasDefault = q('SELECT 1 FROM addresses WHERE user_id = ? AND is_default = 1', [$userId])->fetchColumn();
+    if (!$hasDefault) {
+        q('UPDATE addresses SET is_default = 1 WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 1', [$userId]);
+    }
+}
+
+/** GET /address : the customer's addresses, default one first (an empty list when there are none). */
+function api_address_list(): void
+{
+    $userId = address_user_id();
     $rows = q('SELECT * FROM addresses WHERE user_id = ? ORDER BY is_default DESC, created_at DESC, id DESC',
               [$userId])->fetchAll();
-    if ($rows === []) {
-        json_response(404, ['message' => 'No addresses found for this user.']);
-    }
 
     json_response(200, [
-        'message' => 'User address retrieved successfully.',
+        'message' => $rows ? 'User address retrieved successfully.' : 'No addresses yet.',
         'data'    => array_map('address_json', $rows),
     ]);
 }
 
-/** POST /address/add  { name, phone, addressLine, city, province, postalCode, isDefault? } */
+/** POST /address/add  { label?, name, phone, addressLine, city, province, postalCode?, isDefault? } */
 function api_address_create(): void
 {
-    $auth = require_auth('user');
-    $userId = (int) $auth['id'];
+    $userId = address_user_id();
     $body = json_body();
+    $fields = address_input($body);
 
-    if (!q('SELECT 1 FROM users WHERE id = ?', [$userId])->fetchColumn()) {
-        json_response(404, ['message' => 'User not found.', 'data' => null]);
+    $count = (int) q('SELECT COUNT(*) FROM addresses WHERE user_id = ?', [$userId])->fetchColumn();
+    if ($count >= 20) {
+        json_response(400, ['message' => 'You can save up to 20 addresses. Delete one first.', 'data' => null]);
     }
-
-    $fields = [];
-    foreach (['name', 'phone', 'addressLine', 'city', 'province', 'postalCode'] as $key) {
-        $fields[$key] = body_string($body, $key);
-        if ($fields[$key] === '') {
-            json_response(400, ['message' => 'All address fields are required.', 'data' => null]);
-        }
-    }
-    if (q('SELECT 1 FROM addresses WHERE user_id = ? AND name = ?', [$userId, $fields['name']])->fetchColumn()) {
-        json_response(400, ['message' => 'An address with this name already exists.', 'data' => null]);
-    }
-
-    $isFirst = (int) q('SELECT COUNT(*) FROM addresses WHERE user_id = ?', [$userId])->fetchColumn() === 0;
-    $isDefault = $isFirst || (is_array($body) && ($body['isDefault'] ?? false) === true);
+    $isDefault = $count === 0 || (is_array($body) && ($body['isDefault'] ?? false) === true);
 
     $pdo = db();
     $pdo->beginTransaction();
@@ -209,10 +267,10 @@ function api_address_create(): void
         if ($isDefault) {
             q('UPDATE addresses SET is_default = 0 WHERE user_id = ?', [$userId]);
         }
-        q('INSERT INTO addresses (user_id, name, phone, address_line, city, province, postal_code, is_default)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
-            $userId, $fields['name'], $fields['phone'], $fields['addressLine'], $fields['city'],
-            $fields['province'], $fields['postalCode'], $isDefault ? 1 : 0,
+        q('INSERT INTO addresses (user_id, label, name, phone, address_line, city, province, postal_code, is_default)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+            $userId, $fields['label'], $fields['name'], $fields['phone'], $fields['addressLine'],
+            $fields['city'], $fields['province'], $fields['postalCode'], $isDefault ? 1 : 0,
         ]);
         $id = (int) $pdo->lastInsertId();
         $pdo->commit();
@@ -222,5 +280,65 @@ function api_address_create(): void
     }
 
     $row = q('SELECT * FROM addresses WHERE id = ?', [$id])->fetch();
-    json_response(201, ['message' => 'Address created successfully.', 'data' => address_json($row)]);
+    json_response(201, ['message' => 'Address saved.', 'data' => address_json($row)]);
+}
+
+/** POST /address/{id}/update  same fields as add */
+function api_address_update(string $id): void
+{
+    $userId = address_user_id();
+    $row = owned_address($userId, $id);
+    $body = json_body();
+    $fields = address_input($body);
+    $makeDefault = is_array($body) && ($body['isDefault'] ?? false) === true;
+
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        if ($makeDefault) {
+            q('UPDATE addresses SET is_default = 0 WHERE user_id = ?', [$userId]);
+        }
+        q('UPDATE addresses SET label = ?, name = ?, phone = ?, address_line = ?, city = ?, province = ?,
+                  postal_code = ?, is_default = ?
+            WHERE id = ?', [
+            $fields['label'], $fields['name'], $fields['phone'], $fields['addressLine'], $fields['city'],
+            $fields['province'], $fields['postalCode'], ($makeDefault || $row['is_default']) ? 1 : 0, $row['id'],
+        ]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        $pdo->rollBack();
+        throw $error;
+    }
+
+    $fresh = q('SELECT * FROM addresses WHERE id = ?', [$row['id']])->fetch();
+    json_response(200, ['message' => 'Address saved.', 'data' => address_json($fresh)]);
+}
+
+/** POST /address/{id}/default  Use this address by default. */
+function api_address_set_default(string $id): void
+{
+    $userId = address_user_id();
+    $row = owned_address($userId, $id);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        q('UPDATE addresses SET is_default = 0 WHERE user_id = ?', [$userId]);
+        q('UPDATE addresses SET is_default = 1 WHERE id = ?', [$row['id']]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        $pdo->rollBack();
+        throw $error;
+    }
+    $fresh = q('SELECT * FROM addresses WHERE id = ?', [$row['id']])->fetch();
+    json_response(200, ['message' => 'Default address changed.', 'data' => address_json($fresh)]);
+}
+
+/** POST /address/{id}/delete  The next newest address becomes the default if needed. */
+function api_address_delete(string $id): void
+{
+    $userId = address_user_id();
+    $row = owned_address($userId, $id);
+    q('DELETE FROM addresses WHERE id = ?', [$row['id']]);
+    address_fix_default($userId);
+    json_response(200, ['message' => 'Address deleted.', 'data' => ['id' => (string) $row['id']]]);
 }

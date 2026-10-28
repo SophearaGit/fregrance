@@ -49,10 +49,11 @@ function admin_check_pending_payway(): int
     return count($tranIds);
 }
 
+ensure_social_schema();
 $checked = admin_check_pending_payway();
 
 $parts = [];
-foreach (db()->query('CHECKSUM TABLE orders, order_items, users, wallets, products, brands') as $row) {
+foreach (db()->query('CHECKSUM TABLE orders, order_items, users, wallets, products, brands, product_reviews') as $row) {
     $parts[] = $row['Table'] . '=' . $row['Checksum'];
 }
 

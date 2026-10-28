@@ -42,6 +42,13 @@ abstract final class Routes {
 
   static const String cart = '/cart';
   static const String orders = '/orders';
+  static const String shipping = '/shipping';
+  static const String reviews = '/reviews';
+  static const String addresses = '/addresses';
+  static const String addressForm = '/addresses/form';
+
+  /// The address list in "choose one for this order" mode.
+  static String addressesPick() => '$addresses?pick=1';
   static const String orderSuccess = '/order/success';
 
   static const String discoveryProducts = '/discovery/products';

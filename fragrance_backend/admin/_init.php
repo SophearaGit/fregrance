@@ -184,6 +184,7 @@ function admin_header(string $title, string $active = ''): void
         'products'  => ['products.php', 'Products'],
         'brands'    => ['brands.php', 'Brands'],
         'orders'    => ['orders.php', 'Orders'],
+        'reviews'   => ['reviews.php', 'Reviews'],
         'users'     => ['users.php', 'Users'],
     ];
     ?>

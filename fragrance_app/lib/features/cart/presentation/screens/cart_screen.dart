@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 
 import '../../../../app/router/routes.dart';
 import '../../../../core/core.dart';
+import '../../../address/data/model/address_model.dart';
+import '../../../address/presentation/provider/address_provider.dart';
 import '../../../order/presentation/provider/order_provider.dart';
 import '../../../order/presentation/screens/order_success_screen.dart';
 import '../../../profile/presentation/provider/profile_provider.dart';
@@ -27,7 +29,9 @@ class _CartScreenState extends State<CartScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final addresses = context.read<AddressProvider>();
       await context.read<CartProvider>().loadCart();
+      if (AuthPreferences.isAuthenticated) await addresses.ensureLoaded();
     });
   }
 
@@ -43,6 +47,26 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
+    // Where should it go? Ask for an address if there is none yet.
+    final addresses = context.read<AddressProvider>();
+    await addresses.ensureLoaded();
+    if (!mounted) return;
+    final AddressModel address;
+    final existing = addresses.selected;
+    if (existing != null) {
+      address = existing;
+    } else {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Add where we should deliver your order.')),
+      );
+      final saved = await context.push<bool>(Routes.addressForm);
+      if (!mounted || saved != true) return;
+      final added = addresses.selected;
+      if (added == null) return;
+      address = added;
+    }
+    final delivery = address.deliveryText;
+
     final total = cart.subtotal.toStringAsFixed(2);
     final method = await showModalBottomSheet<String>(
       context: context,
@@ -54,9 +78,21 @@ class _CartScreenState extends State<CartScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-              child: Text(
-                'Pay \$$total with',
-                style: Theme.of(context).textTheme.titleMedium,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Pay \$$total with',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Deliver to ${address.title}: ${address.oneLine}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ),
             ),
             ListTile(
@@ -79,13 +115,13 @@ class _CartScreenState extends State<CartScreen> {
     if (!mounted || method == null) return;
 
     if (method == 'payway') {
-      await _payWithPayway();
+      await _payWithPayway(delivery);
     } else {
-      await _payWithWallet(total);
+      await _payWithWallet(total, delivery);
     }
   }
 
-  Future<void> _payWithWallet(String total) async {
+  Future<void> _payWithWallet(String total, String delivery) async {
     final cart = context.read<CartProvider>();
     final messenger = ScaffoldMessenger.of(context);
 
@@ -108,7 +144,7 @@ class _CartScreenState extends State<CartScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    final result = await cart.checkout();
+    final result = await cart.checkout(deliveryDetail: delivery);
     if (!mounted) return;
 
     if (result.success) {
@@ -124,11 +160,11 @@ class _CartScreenState extends State<CartScreen> {
     if (result.needsSignIn) await context.push(Routes.login);
   }
 
-  Future<void> _payWithPayway() async {
+  Future<void> _payWithPayway(String delivery) async {
     final cart = context.read<CartProvider>();
     final messenger = ScaffoldMessenger.of(context);
 
-    final start = await cart.startPayway();
+    final start = await cart.startPayway(deliveryDetail: delivery);
     if (!mounted) return;
     final checkout = start.checkout;
     if (checkout == null) {
@@ -272,6 +308,23 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                 ),
 
+                // ── Where it goes ──
+                if (AuthPreferences.isAuthenticated)
+                  _DeliverTo(
+                    address: context.watch<AddressProvider>().selected,
+                    onTap: () async {
+                      final addresses = context.read<AddressProvider>();
+                      if (addresses.addresses.isEmpty) {
+                        await context.push<bool>(Routes.addressForm);
+                      } else {
+                        await context.push<AddressModel>(
+                          Routes.addressesPick(),
+                        );
+                      }
+                      if (mounted) setState(() {});
+                    },
+                  ),
+
                 // ── Bottom Summary ──
                 CartSummary(
                   subtotal: cart.subtotal,
@@ -288,3 +341,89 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 }
+
+/// "Deliver to Home · #12, St 271..." with a Change button.
+class _DeliverTo extends StatelessWidget {
+  const _DeliverTo({required this.address, required this.onTap});
+
+  final AddressModel? address;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final a = address;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppConst.spaceMD,
+        0,
+        AppConst.spaceMD,
+        AppConst.spaceSM,
+      ),
+      child: Material(
+        color: colorScheme.surfaceContainer,
+        borderRadius: AppConst.borderRadiusLG,
+        child: InkWell(
+          borderRadius: AppConst.borderRadiusLG,
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConst.spaceMD,
+              vertical: 12,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  a == null
+                      ? Icons.add_location_alt_outlined
+                      : Icons.location_on_outlined,
+                  color: colorScheme.primary,
+                ),
+                const SizedBox(width: AppConst.spaceMD),
+                Expanded(
+                  child: a == null
+                      ? Text(
+                          'Add a delivery address',
+                          style: textTheme.titleSmall?.copyWith(
+                            color: colorScheme.primary,
+                          ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Deliver to ${a.title}',
+                              style: textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              a.oneLine,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+                Text(
+                  a == null ? 'Add' : 'Change',
+                  style: textTheme.labelLarge?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

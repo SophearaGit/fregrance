@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/core.dart';
 import '../../../../shared/shared.dart';
 import '../../../cart/presentation/provider/cart_provider.dart';
+import '../../../favorite/presentation/widgets/favorite_button.dart';
 import '../../data/model/product_enum.dart';
 import '../../data/model/product_model.dart';
 import '../widgets/product_detail_body.dart';
@@ -53,7 +54,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       appBar: AppBar(
         title: Text(product.name),
         actions: [
-          IconButton(icon: const Icon(Icons.favorite_border), onPressed: () {}),
+          FavoriteButton(product: product),
           AppCartCounter(),
         ],
       ),

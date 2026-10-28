@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../review/presentation/widgets/product_reviews_section.dart';
+import '../../../review/presentation/widgets/star_rating.dart';
 import '../../data/model/product_model.dart';
 import 'product_detail_fragrance_card.dart';
 import 'product_detail_stock_badge.dart';
@@ -44,6 +46,22 @@ class ProductDetailBody extends StatelessWidget {
               color: colorScheme.onSurface,
             ),
           ),
+          if (product.reviewCount > 0) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                StarRating(rating: product.rating ?? 0),
+                const SizedBox(width: 6),
+                Text(
+                  '${(product.rating ?? 0).toStringAsFixed(1)} '
+                  '(${product.reviewCount} review${product.reviewCount == 1 ? '' : 's'})',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           Text(
             '${product.currency} ${product.price.toStringAsFixed(2)}',
@@ -76,6 +94,12 @@ class ProductDetailBody extends StatelessWidget {
             fragrance: product.fragrance,
             notes: product.fragranceNotes,
             info: product.productInfo,
+          ),
+          const SizedBox(height: 32),
+          ProductReviewsSection(
+            key: ValueKey(product.id),
+            productId: product.id,
+            productName: product.name,
           ),
           const SizedBox(height: 80),
         ],

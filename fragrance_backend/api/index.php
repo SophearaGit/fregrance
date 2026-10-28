@@ -16,6 +16,7 @@ require APP_ROOT . '/app/api/product.php';
 require APP_ROOT . '/app/api/order.php';
 require APP_ROOT . '/app/api/account.php';
 require APP_ROOT . '/app/api/payway.php';
+require APP_ROOT . '/app/api/social.php';
 
 send_cors_headers();
 
@@ -73,6 +74,9 @@ $routes = [
     ['GET',  '#^/wallet$#',                           'api_wallet'],
     ['GET',  '#^/address$#',                          'api_address_list'],
     ['POST', '#^/address/add$#',                      'api_address_create'],
+    ['POST', '#^/address/([0-9]+)/update$#',          'api_address_update'],
+    ['POST', '#^/address/([0-9]+)/default$#',         'api_address_set_default'],
+    ['POST', '#^/address/([0-9]+)/delete$#',          'api_address_delete'],
 
     ['GET',  '#^/product$#',                          'api_product_index'],
     ['GET',  '#^/product/featured$#',                 'api_product_featured'],
@@ -86,6 +90,13 @@ $routes = [
     ['GET',  '#^/product/discovery/filter$#',         'api_discovery_filter'],
     // The app's cart posts its product ids to /product/cart; /product/batch is the original name.
     ['POST', '#^/product/(?:batch|cart|products/batch)$#', 'api_product_batch'],
+    ['GET',  '#^/product/([0-9]+)/reviews$#',         'api_product_reviews'],
+    ['POST', '#^/product/([0-9]+)/reviews$#',         'api_product_review_save'],
+    ['POST', '#^/review/([0-9]+)/delete$#',           'api_review_delete'],
+    ['GET',  '#^/review/mine$#',                      'api_review_mine'],
+    ['GET',  '#^/favorite$#',                         'api_favorite_list'],
+    ['GET',  '#^/favorite/ids$#',                     'api_favorite_ids'],
+    ['POST', '#^/favorite/([0-9]+)/toggle$#',         'api_favorite_toggle'],
     ['GET',  '#^/product/?detail/:?([^/]+)$#',        'api_product_detail'],
     ['GET',  '#^/product/:?([0-9]+)$#',               'api_product_detail'],
 

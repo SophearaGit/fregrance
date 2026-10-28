@@ -164,7 +164,10 @@ function require_auth(?string $role = null): array
         unauthorized('Invalid or expired token.');
     }
     if ($role !== null && ($payload['role'] ?? null) !== $role) {
-        json_response(403, ['success' => false, 'error' => 'ForbiddenError', 'message' => 'You do not have permission.']);
+        $message = $role === 'user'
+            ? 'This is an admin account. In the app, sign in with a customer account.'
+            : 'You do not have permission.';
+        json_response(403, ['success' => false, 'error' => 'ForbiddenError', 'message' => $message]);
     }
     return $payload;
 }

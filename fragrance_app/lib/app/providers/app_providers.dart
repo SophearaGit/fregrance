@@ -33,4 +33,10 @@ final List<SingleChildWidget> appProviders = [
 
   // =====================[ Orders ]====================
   ChangeNotifierProvider.value(value: orderProvider),
+
+  // ===================[ Addresses ]===================
+  ChangeNotifierProvider.value(value: addressProvider),
+
+  // ===================[ Favorites ]===================
+  ChangeNotifierProvider.value(value: favoriteProvider),
 ];

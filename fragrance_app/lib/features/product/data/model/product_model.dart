@@ -34,6 +34,9 @@ final class ProductModel extends ApiBaseModel {
   // Discovery & Filtering
   // =========================================
   final double? rating;
+
+  /// How many customers reviewed it (the rating is their average).
+  final int reviewCount;
   final List<String>? moods;
   final List<String>? occasions;
   final List<String>? tags;
@@ -71,6 +74,7 @@ final class ProductModel extends ApiBaseModel {
     required this.salesCount,
     // Discovery & Filtering
     this.rating,
+    this.reviewCount = 0,
     this.moods,
     this.occasions,
     this.tags,
@@ -119,6 +123,7 @@ final class ProductModel extends ApiBaseModel {
       salesCount: json['salesCount'] as int,
 
       rating: (json['rating'] as num?)?.toDouble(),
+      reviewCount: (json['reviewCount'] as num?)?.toInt() ?? 0,
       moods: json['moods'] is List
           ? (json['moods'] as List).map((e) => e.toString()).toList()
           : null,

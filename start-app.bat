@@ -135,6 +135,9 @@ set "RUNFAILED=1"
 goto cleanup
 
 :phonerun
+rem Make the phone window as tall as this laptop's screen (it remembers nothing
+rem between laptops, so it is fitted every time).
+if exist "%~dp0tools\fit-emulator.ps1" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\fit-emulator.ps1" >nul 2>nul
 echo.
 echo Starting the app on the phone. The first build takes several minutes.
 echo When you are finished, press q here to close everything.

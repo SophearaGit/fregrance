@@ -59,58 +59,66 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           child: Column(
             children: [
-              const SizedBox(height: AppConst.spaceXL),
-              const SizedBox(height: AppConst.spaceXL),
-              const SizedBox(height: AppConst.spaceXL),
-
-              // 2. Carousel Slider (Only Image, Title, Description move)
-              CarouselSlider.builder(
-                carouselController: _carouselController,
-                itemCount: _pages.length,
-                options: CarouselOptions(
-                  height: 400,
-                  viewportFraction: 1.0,
-                  enableInfiniteScroll: false,
-                  onPageChanged: (index, reason) {
-                    setState(() {
-                      _currentIndex = index;
-                    });
+              // 2. Carousel Slider (Only Image, Title, Description move).
+              // It takes whatever height is left, so small phones fit too.
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Room left for the picture after the title and text.
+                    final imageSize = (constraints.maxHeight - 170).clamp(
+                      100.0,
+                      240.0,
+                    ).toDouble();
+                    return CarouselSlider.builder(
+                          carouselController: _carouselController,
+                          itemCount: _pages.length,
+                          options: CarouselOptions(
+                            height: constraints.maxHeight,
+                            viewportFraction: 1.0,
+                            enableInfiniteScroll: false,
+                            onPageChanged: (index, reason) {
+                              setState(() {
+                                _currentIndex = index;
+                              });
+                            },
+                          ),
+                          itemBuilder: (context, index, realIndex) {
+                            final page = _pages[index];
+                            return Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                AppImage(
+                                  image: page.image,
+                                  type: ImageType.asset,
+                                  width: imageSize,
+                                  height: imageSize,
+                                  fit: BoxFit.contain,
+                                ),
+                                const SizedBox(height: AppConst.spaceLG),
+                                Text(
+                                  page.title,
+                                  style: theme.textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: AppConst.spaceSM),
+                                Text(
+                                  page.description,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            );
+                          },
+                    );
                   },
                 ),
-                itemBuilder: (context, index, realIndex) {
-                  final page = _pages[index];
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      AppImage(
-                        image: page.image,
-                        type: ImageType.asset,
-                        width: 240,
-                        height: 240,
-                        fit: BoxFit.contain,
-                      ),
-                      const SizedBox(height: AppConst.spaceLG),
-                      Text(
-                        page.title,
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: AppConst.spaceSM),
-                      Text(
-                        page.description,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  );
-                },
               ),
 
-              const Spacer(),
+              const SizedBox(height: AppConst.spaceMD),
 
               // 3. Static Indicator and Bottom Controls
               Column(
@@ -128,8 +136,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: AppConst.spaceXL),
-                  const SizedBox(height: AppConst.spaceXL),
                   const SizedBox(height: AppConst.spaceXL),
 
                   // Bottom Bar with Next Button
